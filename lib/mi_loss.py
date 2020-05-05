@@ -55,11 +55,11 @@ def vector_loss(x, z, measure):
 
 # NOTE: not properly implemented yet
 def scalar_loss(z, y, measure):
-    N = z.size()[:1]
-    x = x.view(N, -1)
-    z = z.view(N, -1)
-    return vector_loss(x, z, measure)
+    N = z.size()[0]
+    y = y.view(N, 1, -1)
+    z = z.view(N, 1, -1)
+    return multi_channel_loss(y, z, measure)
 
 """ loss function = celoss - alpha * zxloss + beta * zyloss """
-def total_loss(criterion, predict, target, x_encoded, zx, zy,yc,  measure, alpha, beta):
-    return criterion(predict, target) - alpha * vector_loss(x_encoded, zx, measure) + beta * jscalar_loss(zy, yc, measure)
+def total_loss(criterion, predict, target, x_encoded, zx, zy, yc, measure, alpha, beta):
+    return criterion(predict, target) - alpha * vector_loss(x_encoded, zx, measure) + beta * scalar_loss(zy, yc, measure)

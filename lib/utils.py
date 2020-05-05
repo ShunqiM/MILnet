@@ -1,3 +1,5 @@
+import os
+import shutil
 from torchvision import models
 import torch
 import torch.nn as nn
@@ -24,23 +26,69 @@ class FeatureExtrator(ResNet):
         x = self.relu(x)
         x = self.maxpool(x)
 
+        x = self.layer1(x)
+
         # low level features for MI computation
         low = x
 
-        x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
 
         return low, x
 
-    def get_channel_num():
+    def get_channel_num(self):
         return 512 * Bottleneck.expansion
+
+    def get_local_channel_num(self):
+        return self.layer2[0].conv1 .in_channels
 
 def get_feature_extractor():
     model = FeatureExtrator()
     model.load_state_dict(models.resnet50(pretrained=True).state_dict())
     return model
+
+
+def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+    """Saves checkpoint to disk"""
+    directory = "D:\\X\\2019S2\\3912\\MILN_models\\"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    filename = directory + filename
+    torch.save(state, filename)
+    if is_best:
+        shutil.copyfile(filename, directory + 'model_best.pth.tar')
+
+def load_checkpoint(model, mi_encoder, optimizer, scheduler, losslogger, filename='checkpoint.pth.tar'):
+    # Note: Input model & optimizer should be pre-defined.  This routine only updates their states.
+    start_epoch = 0
+    if os.path.isfile(filename):
+        print("=> loading checkpoint '{}'".format(filename))
+        checkpoint = torch.load(filename)
+        start_epoch = checkpoint['epoch']
+        model.load_state_dict(checkpoint['state_dict'])
+        mi_encoder.load_state_dict(checkpoint['mi_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        # best_auc = checkpoint['best_prec1']
+        scheduler.load_state_dict(checkpoint['scheduler'])
+        # scheduler = checkpoint['scheduler']
+        best_auc = checkpoint['best_auc']
+        print("=> loaded checkpoint '{}' (epoch {})"
+                  .format(filename, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(filename))
+
+    return model, mi_encoder, optimizer, start_epoch, best_auc, scheduler
+
+
+def adjust_learning_rate_(optimizer, epoch, logger, par_set):
+    print("/Users/LULU/3912/tb/" + par_set)
+    for param_group in optimizer.param_groups:
+        # print(param_group['lr'])
+        param_group['lr'] = param_group['lr']*0.1
+        lr = param_group['lr']
+        logger.log_value('learning_rate', lr, epoch)
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""

@@ -12,6 +12,10 @@ def resize(bbox, img_size):
 def generate_bbox(map, t):
     return
 
+def is_box(bbox):
+    if bbox[0] == 0:
+        return False
+    return True
 
 def evaluations(heatmap, t, bbox):
     """ heatmap: tensors of heatmaps
@@ -23,17 +27,23 @@ def evaluations(heatmap, t, bbox):
     img_size = heatmap.size()[-1]
     bbox = resize(bbox, img_size)
     if (len(bbox.shape) == 3): # batch, disease, data
+        non_zero_cnt = np.zeros((14))
         b = heatmap.shape[0]
-        ret = np.zeros((b, 14, 3))
+        ret = np.full((b, 14, 3), np.nan)
         for i in range(b):
             for j in range(14):
-                ret[i][j] = iop(bbox[i][j], binary[i][j], img_size)
+                if is_box(bbox[i][j]):
+                    non_zero_cnt[j] += 1
+                    ret[i][j] = iop(bbox[i][j], binary[i][j], img_size)
     if (len(bbox.shape) == 2): # batch, data (single disease)
         b = heatmap.shape[0]
-        ret = np.zeros((b, 3))
+        ret = np.full((b, 3), np.nan)
+        non_zero_cnt = 0
         for i in range(b):
-            ret[i] = eval(bbox[i], binary[i], img_size)
-        return ret
+            if is_box(bbox[i]):
+                non_zero_cnt += 1
+                ret[i] = eval(bbox[i], binary[i], img_size)
+        return ret, non_zero_cnt
 
 """ Returns the IOP, FPR, FNR """
 def eval(bbox, heatmap, img_size):

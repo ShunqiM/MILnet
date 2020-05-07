@@ -66,6 +66,9 @@ def run():
         fold='val',
         transform=data_transforms['val'],
         bbox = True)
+    transformed_datasets['loc'] = BBoxDataset(
+        path_to_images=PATH_TO_IMAGES,
+        transform=data_transforms['val'])
 
     dataloaders = {}
     dataloaders['train'] = torch.utils.data.DataLoader(
@@ -78,11 +81,16 @@ def run():
         batch_size=bat,
         shuffle=True,
         num_workers=8)
+    dataloaders['loc'] = torch.utils.data.DataLoader(
+        transformed_datasets['loc'],
+        batch_size=bat,
+        shuffle=True,
+        num_workers=8)
 
     fe = get_feature_extractor()
     classifier = models.resnet50(pretrained=True)
     classifier.fc = nn.Linear(fe.get_channel_num(), 1)
-    model = MILNet(fe, classifier, t = 0.3)
+    model = MILNet(fe, classifier, t = network_threshold)
     mi_encoder = MIEncoder(7, 7, model.fe.get_local_channel_num(), mi_units)
 
     optimizer = torch.optim.SGD(
@@ -108,11 +116,12 @@ def run():
             logger.log_value('learning_rate', lr, epoch)
 
         ep = epoch
-        training(dataloaders['train'], model, mi_encoder, criterion, optimizer, epoch, logger, alpha, beta)
+        # training(dataloaders['train'], model, mi_encoder, criterion, optimizer, epoch, logger, alpha, beta)
 
         # evaluate on validation set
-        new_auc, new_loss = validate(dataloaders['val'], model, mi_encoder, criterion, epoch, logger, THRESHOLD)
-
+        # new_auc, new_loss = validate(dataloaders['val'], model, mi_encoder, criterion, epoch, logger, THRESHOLD)
+        iop, fpr, fnr = localize(dataloaders['loc'], model, mi_encoder, epoch, logger, THRESHOLD)
+        exit()
         scheduler.step(new_loss)
         best_auc = max(new_auc, best_auc)
         # remember best prec@1 and save checkpoint
@@ -126,7 +135,7 @@ def run():
             'best_auc': best_auc,
             'scheduler': scheduler.state_dict()
         }, is_best, str(par_set)+"_epoch"+str(epoch))
-        exit()
+
     print('Best accuracy: ', best_auc)
 
 

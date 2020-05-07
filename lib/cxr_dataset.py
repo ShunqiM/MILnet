@@ -183,11 +183,14 @@ class PneumoniaData(Dataset):
 
 
 class BBoxDataset(Dataset):
-    def __init__(self, path_to_images, transform):
+    def __init__(self, path_to_images, transform, single_disease = True):
         self.bbdf = pd.read_csv("D:\\X\\2019S2\\3912\\CXR8\\BBox_List_2017.csv")
         self.transform = transform
         self.path_to_images = path_to_images
-        self.dic = {"Atelectasis":0, "Cardiomegaly":1,"Effusion":2, "Infiltration":3, "Mass":4, "Nodule":5,
+        # NOTE that the disease name has changed Infiltration -> Infiltrate
+        if single_disease:
+            self.bbdf = self.bbdf.loc[self.bbdf['Finding Label'] == 'Infiltrate']
+        self.dic = {"Atelectasis":0, "Cardiomegaly":1,"Effusion":2, "Infiltrate":3, "Mass":4, "Nodule":5,
                     "Pneumonia":6, "Pneumothorax":7, "Consolidation":8 , "Edema":9, "Emphysema":10, "Fibrosis":11, "Pleural_Thickening":12, "Hernia":13}
 
     def __len__(self):

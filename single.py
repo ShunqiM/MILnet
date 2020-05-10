@@ -106,7 +106,8 @@ def run():
     start_epoch = 0
 
     if load_model:
-        model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\a1_epoch0")
+        model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(
+                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\a12_epoch0")
         # adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
         model = model.cuda()
 
@@ -116,12 +117,12 @@ def run():
             logger.log_value('learning_rate', lr, epoch)
 
         ep = epoch
-        # training(dataloaders['train'], model, mi_encoder, criterion, optimizer, epoch, logger, alpha, beta)
+        training(dataloaders['train'], model, mi_encoder, criterion, optimizer, epoch, logger, alpha, beta)
 
         # evaluate on validation set
-        # new_auc, new_loss = validate(dataloaders['val'], model, mi_encoder, criterion, epoch, logger, THRESHOLD)
+        new_auc, new_loss = validate(dataloaders['val'], model, mi_encoder, criterion, epoch, logger, THRESHOLD)
         iop, fpr, fnr = localize(dataloaders['loc'], model, mi_encoder, epoch, logger, THRESHOLD)
-        exit()
+        # exit()
         scheduler.step(new_loss)
         best_auc = max(new_auc, best_auc)
         # remember best prec@1 and save checkpoint
@@ -135,7 +136,7 @@ def run():
             'best_auc': best_auc,
             'scheduler': scheduler.state_dict()
         }, is_best, str(par_set)+"_epoch"+str(epoch))
-
+        exit()
     print('Best accuracy: ', best_auc)
 
 

@@ -58,6 +58,7 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, directory + 'model_best.pth.tar')
+    print("model saved")
 
 def load_checkpoint(model, mi_encoder, optimizer, scheduler, losslogger, filename='checkpoint.pth.tar'):
     # Note: Input model & optimizer should be pre-defined.  This routine only updates their states.

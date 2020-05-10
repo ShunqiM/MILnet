@@ -18,21 +18,19 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-alpha = 0.01
-beta = 1
-THRESHOLD = 0.60
-network_threshold = 0.3
+alpha = 0.3
+beta = 3
+THRESHOLD = 0.7
+network_threshold = 0.2
 mi_units = 256
-load_model = True
+load_model = False
 size = 224
-block_configure = (6,12,24,16)
 lr = 0.01
-grow_rate = 32
 bat = 16
 validate_log_freq = 1600/bat
 log_freq = 16000/bat
 print_freq = 2
-par_set = "a1"
+par_set = "non_m"
 
 def training(train_loader, model, mi_encoder, criterion, optimizer, epoch, logger, alpha, beta, measure = 'JSD'):
     """Train for one epoch on the training set"""
@@ -83,9 +81,9 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, epoch, logge
                       loss=losses, ploss = predict_losses, xloss = zx_losses, yloss = zy_losses))
         if i % log_freq == 0 and i != 0:
             logger.log_value('train_loss', losses.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
-            logger.log_value('train_ploss', predict_loss.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
-            logger.log_value('train_xloss', zx_loss.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
-            logger.log_value('train_yloss', zy_loss.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
+            logger.log_value('train_ploss', predict_losses.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
+            logger.log_value('train_xloss', zx_losses.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
+            logger.log_value('train_yloss', zy_losses.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
     return losses.avg
 
 
@@ -153,9 +151,9 @@ def validate(val_loader, model, mi_encoder, criterion, epoch, logger, threshold 
                 print("AUC: ", val)
                 logger.log_value('avg_auc', auc.avg, int(epoch*len(val_loader)*bat/16)+int(i*bat/16))
                 logger.log_value('val_loss', losses.avg,int(epoch*len(val_loader)*bat/16)+int(i*bat/16))
-                logger.log_value('val_ploss', predict_loss.avg, int(epoch*len(val_loader)*bat/16)+int(i*bat/16))
-                logger.log_value('val_xloss', zx_loss.avg, int(epoch*len(val_loader)*bat/16)+int(i*bat/16))
-                logger.log_value('val_yloss', zy_loss.avg, int(epoch*len(val_loader)*bat/16)+int(i*bat/16))
+                logger.log_value('val_ploss', predict_losses.avg, int(epoch*len(val_loader)*bat/16)+int(i*bat/16))
+                logger.log_value('val_xloss', zx_losses.avg, int(epoch*len(val_loader)*bat/16)+int(i*bat/16))
+                logger.log_value('val_yloss', zy_losses.avg, int(epoch*len(val_loader)*bat/16)+int(i*bat/16))
                 print("average AUC: ", auc.avg)
 
     print(' * AUC@1 {auc.avg:.3f}'.format(auc=auc))
@@ -181,7 +179,6 @@ def localize(loc_loader, model, mi_encoder, epoch, logger, threshold = 0.5):
             evals, non_zero_cnt = evaluations(m, threshold, bboxes)
             # print(evals)  #NOTE What if there are no bounding boxes?
             result = np.nanmean(evals, axis=0)
-            print(result)
 
             average_iop.update(result[0], non_zero_cnt)
             average_fpr.update(result[1], non_zero_cnt)

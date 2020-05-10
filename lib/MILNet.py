@@ -10,9 +10,8 @@ from torchvision.models.resnet import conv1x1, resnet18
 from lib.mi_networks import *
 
 # TODO
-# Update XZ network strucutre
-# Load Model Function
-
+# Concate / Add the orignal X together with the masked X to improve performance
+# Double check do I have a wrong loss function
 
 class LinearSeq(nn.Module):
     def __init__(self, in_units, out_units):

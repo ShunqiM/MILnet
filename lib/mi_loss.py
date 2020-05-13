@@ -63,3 +63,44 @@ def scalar_loss(z, y, measure):
 """ loss function = celoss - alpha * zxloss + beta * zyloss """
 def total_loss(criterion, predict, target, x_encoded, zx, zy, yc, measure, alpha, beta):
     return criterion(predict, target) - alpha * vector_loss(x_encoded, zx, measure) + beta * scalar_loss(zy, yc, measure)
+
+
+def donsker_varadhan_loss(l, m):
+    '''
+    Note that vectors should be sent as 1x1.
+    Args:
+        l: Local feature map.
+        m: Multiple globals feature map.
+    Returns:
+        torch.Tensor: Loss.
+    '''
+    N, units, n_locals = l.size()
+    n_multis = m.size(2)
+
+    # First we make the input tensors the right shape.
+    l = l.view(N, units, n_locals)
+    l = l.permute(0, 2, 1)
+    l = l.reshape(-1, units)
+
+    m = m.view(N, units, n_multis)
+    m = m.permute(0, 2, 1)
+    m = m.reshape(-1, units)
+
+    # Outer product, we want a N x N x n_local x n_multi tensor.
+    u = torch.mm(m, l.t())
+    u = u.reshape(N, n_multis, N, n_locals).permute(0, 2, 3, 1)
+
+    # Since we have a big tensor with both positive and negative samples, we need to mask.
+    mask = torch.eye(N).to(l.device)
+    n_mask = 1 - mask
+
+    # Positive term is just the average of the diagonal.
+    E_pos = (u.mean(2) * mask).sum() / mask.sum()
+
+    # Negative term is the log sum exp of the off-diagonal terms. Mask out the positive.
+    u -= 10 * (1 - n_mask)
+    u_max = torch.max(u)
+    E_neg = torch.log((n_mask * torch.exp(u - u_max)).sum() + 1e-6) + u_max - math.log(n_mask.sum())
+    loss = E_neg - E_pos
+
+    return loss

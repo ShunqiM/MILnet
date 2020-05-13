@@ -49,6 +49,17 @@ def get_feature_extractor():
     return model
 
 
+class GradReverse(torch.autograd.Function):
+    def forward(self, x):
+        return x
+
+    def backward(self, grad_output):
+        return (-grad_output)
+
+def grad_reverse(x):
+    return GradReverse()(x)
+
+
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     """Saves checkpoint to disk"""
     directory = "D:\\X\\2019S2\\3912\\MILN_models\\"

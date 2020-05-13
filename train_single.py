@@ -18,10 +18,10 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-alpha = 0.3
-beta = 3
-THRESHOLD = 0.7
-network_threshold = 0.2
+alpha = 5
+beta = 1
+THRESHOLD = 0.4
+network_threshold = 0.5
 mi_units = 256
 load_model = False
 size = 224
@@ -30,7 +30,7 @@ bat = 16
 validate_log_freq = 1600/bat
 log_freq = 16000/bat
 print_freq = 2
-par_set = "non_m"
+par_set = "gr11"
 
 def training(train_loader, model, mi_encoder, criterion, optimizer, epoch, logger, alpha, beta, measure = 'JSD'):
     """Train for one epoch on the training set"""
@@ -55,7 +55,7 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, epoch, logge
         predict_loss = criterion(output, target_var)
         zx_loss = vector_loss(xc, zx, measure)
         zy_loss = scalar_loss(zy, yc, measure)
-        loss = predict_loss - alpha * zx_loss + beta * zy_loss
+        loss = predict_loss + alpha * zx_loss + beta * zy_loss
 
 
         losses.update(loss.data, input.size(0))
@@ -120,7 +120,7 @@ def validate(val_loader, model, mi_encoder, criterion, epoch, logger, threshold 
             predict_loss = criterion(output, target_var)
             zx_loss = vector_loss(xc, zx, measure)
             zy_loss = scalar_loss(zy, yc, measure)
-            loss = predict_loss - alpha * zx_loss + beta * zy_loss
+            loss = predict_loss + alpha * zx_loss + beta * zy_loss
 
             y_true.extend(target_var.tolist())
             y_pre.extend(output.tolist())

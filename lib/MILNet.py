@@ -8,6 +8,7 @@ import torch.utils.data
 from torch.autograd import Variable
 from torchvision.models.resnet import conv1x1, resnet18
 from lib.mi_networks import *
+from lib.utils import grad_reverse
 
 # TODO
 # Concate / Add the orignal X together with the masked X to improve performance
@@ -62,11 +63,12 @@ class MIEncoder(nn.Module):
     def forward(self, x, z, y):
         N, C, H, W = z.size()
         # z = z.view(N, 1, C * H * W)
+        x = grad_reverse(x)
         z = z.view(N, -1)
         x = self.Xnet_3(self.Xnet_2(self.Xnet_1(x)))
         z = self.Zlayer(z)
         zy = self.ZYlayer_2(self.ZYlayer_1(z))
-        zx = self.ZXlayer_2(self.ZXlayer_1(z))
+        zx = self.ZXlayer_2(self.ZXlayer_1(grad_reverse(z)))
         y = y.unsqueeze(1)
         y = self.Ynet_2(self.Ynet_1(y))
         return x, zx, zy, y

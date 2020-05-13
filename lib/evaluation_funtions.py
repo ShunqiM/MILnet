@@ -13,7 +13,7 @@ def generate_bbox(map, t):
     return
 
 def is_box(bbox):
-    if bbox[0] == 0:
+    if bbox[2] == 0:
         return False
     return True
 

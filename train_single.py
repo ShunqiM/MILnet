@@ -18,10 +18,10 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-alpha = 5
-beta = 1
-THRESHOLD = 0.4
-network_threshold = 0.5
+alpha = 0.1
+beta = 0.1
+THRESHOLD = 0.6
+network_threshold = 0.3
 mi_units = 256
 load_model = False
 size = 224
@@ -30,7 +30,7 @@ bat = 16
 validate_log_freq = 1600/bat
 log_freq = 16000/bat
 print_freq = 2
-par_set = "gr11"
+par_set = "test"
 
 def training(train_loader, model, mi_encoder, criterion, optimizer, epoch, logger, alpha, beta, measure = 'JSD'):
     """Train for one epoch on the training set"""
@@ -47,7 +47,7 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, epoch, logge
         input_var = input.cuda(non_blocking=True)
 
         x, z, output, m = model(input_var)
-        xc, zx, zy, yc = mi_encoder(x, z, target_var)
+        xc, zx, zy, yc = mi_encoder(input_var, z, target_var)
 
         optimizer.zero_grad()
 
@@ -114,7 +114,7 @@ def validate(val_loader, model, mi_encoder, criterion, epoch, logger, threshold 
             target_var = torch.autograd.Variable(target)
 
             x, z, output, m = model(input_var)
-            xc, zx, zy, yc = mi_encoder(x, z, target_var)
+            xc, zx, zy, yc = mi_encoder(input_var, z, target_var)
 
             # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
             predict_loss = criterion(output, target_var)

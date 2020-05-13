@@ -117,5 +117,10 @@ def run():
         #     break
 
 
-if __name__ == '__main__':
-    run()
+# if __name__ == '__main__':
+#     run()
+
+bbox = torch.tensor([0, 0, 10, 10])
+heatmap = torch.full((20, 20), 1).int()
+heatmap[1,1] = 0
+print(eval(bbox, heatmap, 20))

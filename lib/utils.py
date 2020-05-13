@@ -30,7 +30,6 @@ class FeatureExtrator(ResNet):
 
         # low level features for MI computation
         low = x
-
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
@@ -41,7 +40,7 @@ class FeatureExtrator(ResNet):
         return 512 * Bottleneck.expansion
 
     def get_local_channel_num(self):
-        return self.layer2[0].conv1 .in_channels
+        return self.layer2[0].conv1.in_channels
 
 def get_feature_extractor():
     model = FeatureExtrator()

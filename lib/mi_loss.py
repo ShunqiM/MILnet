@@ -16,6 +16,11 @@ def get_loss(a, b, measure):
         raise NotImplementedError("Wrong Dimension of Input at Loss Computation!")
 
 def multi_channel_loss(l, m, measure):
+    E_neg, E_pos = multi_channel_loss_(l, m, measure)
+    loss = E_neg - E_pos
+    return loss
+
+def multi_channel_loss_(l, m, measure):
     N, units, n_locals = l.size()
     n_multis = m.size(2)
 
@@ -43,22 +48,28 @@ def multi_channel_loss(l, m, measure):
     # Mask positive and negative terms for positive and negative parts of loss
     E_pos = (E_pos * mask).sum() / mask.sum()
     E_neg = (E_neg * n_mask).sum() / n_mask.sum()
-    loss = E_neg - E_pos
 
-    return loss
+    return E_neg, E_pos
 
-def vector_loss(x, z, measure):
+def vector_loss(x, z, measure, ret_all = False):
     N, mi_units = x.size()[:2]
     x = x.view(N, mi_units, -1)
     z = z.view(N, mi_units, -1)
-    return multi_channel_loss(x, z, measure)
+    neg, pos = multi_channel_loss_(x, z, measure)
+    if ret_all:
+        return neg, pos
+    return neg - pos
 
 # NOTE: not properly implemented yet
-def scalar_loss(z, y, measure):
+def scalar_loss(z, y, measure, ret_all = False):
     N = z.size()[0]
     y = y.view(N, 1, -1)
     z = z.view(N, 1, -1)
-    return multi_channel_loss(y, z, measure)
+    neg, pos = multi_channel_loss_(y, z, measure)
+    if ret_all:
+        return neg, pos
+    return neg - pos
+    # return multi_channel_loss(y, z, measure)
 
 """ loss function = celoss - alpha * zxloss + beta * zyloss """
 def total_loss(criterion, predict, target, x_encoded, zx, zy, yc, measure, alpha, beta):

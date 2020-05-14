@@ -18,21 +18,24 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-alpha = 0.1
-beta = 0.1
-THRESHOLD = 0.6
-network_threshold = 0.3
+par_set = "test"
+alpha = 10
+beta = 1
+THRESHOLD = 0.7
+network_threshold = 0.2
 mi_units = 256
 load_model = False
 size = 224
 lr = 0.01
+mi_lr = 0.01
+Lambda = 1
 bat = 16
 validate_log_freq = 1600/bat
 log_freq = 16000/bat
 print_freq = 2
-par_set = "test"
 
-def training(train_loader, model, mi_encoder, criterion, optimizer, epoch, logger, alpha, beta, measure = 'JSD'):
+
+def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoch, logger, alpha, beta, measure = 'JSD'):
     """Train for one epoch on the training set"""
     batch_time = AverageMeter()
     losses = AverageMeter()
@@ -40,6 +43,7 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, epoch, logge
     zx_losses = AverageMeter()
     zy_losses = AverageMeter()
     model.train()
+    mi_encoder.train()
     end = time.time()
     bat = train_loader.batch_size
     for i, (input, target, name, bboxes) in enumerate(BackgroundGenerator(train_loader)):
@@ -50,22 +54,30 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, epoch, logge
         xc, zx, zy, yc = mi_encoder(input_var, z, target_var)
 
         optimizer.zero_grad()
+        # mi_opt.zero_grad()
 
         # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
         predict_loss = criterion(output, target_var)
-        zx_loss = vector_loss(xc, zx, measure)
+        zx_nloss, zx_ploss = vector_loss(xc, zx, measure, True)
         zy_loss = scalar_loss(zy, yc, measure)
-        loss = predict_loss + alpha * zx_loss + beta * zy_loss
+        """ zx_ploss is the disimilarity between z x and should be minimized in mi network """
+        loss = predict_loss - alpha * zx_ploss + beta * zy_loss
 
-
-        losses.update(loss.data, input.size(0))
-        predict_losses.update(predict_loss, input.size(0))
-        zx_losses.update(zx_loss, input.size(0))
-        zy_losses.update(zy_loss, input.size(0))
-
-
-        loss.backward()
+        loss.backward(retain_graph = True)
+        # optimizer.step()
+        #
+        # optimizer.zero_grad()
+        """ Step does not need model to be unfreezed, backward does """
+        freeze_network(model)
+        neg_loss = alpha * zx_nloss
+        neg_loss.backward()
+        unfreeze_network(model)
         optimizer.step()
+
+        losses.update(loss.data + neg_loss.data, input.size(0))
+        predict_losses.update(predict_loss.data, input.size(0))
+        zx_losses.update(zx_nloss.data - zx_ploss.data, input.size(0))
+        zy_losses.update(zy_loss.data, input.size(0))
 
         batch_time.update(time.time() - end)
         end = time.time()
@@ -101,6 +113,7 @@ def validate(val_loader, model, mi_encoder, criterion, epoch, logger, threshold 
                 6:"Pneumonia", 7:"Pneumothorax", 8:"Consolidation" , 9:"Edema", 10:"Emphysema", 11:"Fibrosis", 12:"Pleural_Thickening", 13:"Hernia"}
 
     model.eval()
+    mi_encoder.eval()
     bat = val_loader.batch_size
     end = time.time()
     y_true = []

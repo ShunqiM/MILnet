@@ -3,15 +3,18 @@ import os
 sys.path.insert(0, os.getcwd())
 
 from torchvision import models
-from lib.cxr_dataset import *
 import signal
 import numpy as np
 import pandas as pd
 from lib.cxr_dataset import *
 import time
+from lib.utils import *
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from lib.MILNet import *
+from train_single import *
+from lib.mi_loss import *
 
 from prefetch_generator import BackgroundGenerator
-from lib.utils import *
 from lib.evaluation_funtions import *
 
 print_freq = 2
@@ -120,7 +123,63 @@ def run():
 # if __name__ == '__main__':
 #     run()
 
-bbox = torch.tensor([0, 0, 10, 10])
-heatmap = torch.full((20, 20), 1).int()
-heatmap[1,1] = 0
-print(eval(bbox, heatmap, 20))
+# bbox = torch.tensor([0, 0, 10, 10])
+# heatmap = torch.full((20, 20), 1).int()
+# heatmap[1,1] = 0
+# print(eval(bbox, heatmap, 20))
+
+# x = torch.ones(2, 2, requires_grad=True)
+# # x2 =
+# y = torch.full((2, 2), 1, requires_grad=True)
+# z = (x+y)*y*2
+# out = z.mean()
+#
+# x.require_grad = False
+# out.backward(retain_graph = True)
+# print(x.grad)
+# print(y.grad)
+# x.require_grad = True
+# out.backward()
+# print(x.grad)
+# print(y.grad)
+
+
+
+criterion = nn.BCEWithLogitsLoss().cuda()
+fe = get_feature_extractor()
+classifier = models.resnet50(pretrained=True)
+classifier.fc = nn.Linear(fe.get_channel_num(), 1)
+model = MILNet(fe, classifier, t = network_threshold).cuda()
+mi_encoder = MIEncoder(7, 7, model.fe.get_local_channel_num(), mi_units).cuda()
+measure = 'JSD'
+optimizer = torch.optim.SGD(
+    filter(
+        lambda p: p.requires_grad,
+        (list(model.parameters()) + list(mi_encoder.parameters()))),
+    lr=10,
+    momentum=0.9,
+    weight_decay=1e-4)
+
+input_var = torch.full((2, 3, 224, 224), 2).float().cuda(non_blocking=True)
+target_var = torch.full((2, 1), 1).float().cuda(non_blocking=True)
+x, z, output, m = model(input_var)
+xc, zx, zy, yc = mi_encoder(input_var, z, target_var)
+
+optimizer.zero_grad()
+model.train()
+mi_encoder.train()
+# neg, pos = multi_channel_loss_()
+predict_loss = criterion(output, target_var)
+zx_nloss, zx_ploss = vector_loss(xc, zx, measure, True)
+zy_loss = scalar_loss(zy, yc, measure)
+loss = predict_loss - alpha * zx_ploss + beta * zy_loss
+tmp = model.mask_generator.weight.clone()
+print(model.mask_generator.weight)
+loss.backward()
+optimizer.step()
+# neg_loss = alpha * zx_nloss
+# neg_loss.backward()
+freeze_network(model)
+print(model.mask_generator.weight)
+print(torch.equal(tmp, model.mask_generator.weight))
+unfreeze_network(model)

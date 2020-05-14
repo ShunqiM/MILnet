@@ -91,7 +91,25 @@ def run():
     classifier = models.resnet50(pretrained=True)
     classifier.fc = nn.Linear(fe.get_channel_num(), 1)
     model = MILNet(fe, classifier, t = network_threshold)
-    mi_encoder = MIEncoder(7, 7, model.fe.get_local_channel_num(), mi_units)
+    mi_encoder = MIEncoder(7, 7, model.fe.get_local_channel_num(), mi_units, Lambda)
+
+    # NOTE The main reason we need two optimizer is that they need different learning rate
+    # optimizer = torch.optim.SGD(
+    #     filter(
+    #         lambda p: p.requires_grad,
+    #         (list(model.parameters()))),
+    #     lr=lr,
+    #     momentum=0.9,
+    #     weight_decay=1e-4)
+    #
+    # mi_opti = torch.optim.SGD(
+    #     filter(
+    #         lambda p: p.requires_grad,
+    #         (list(mi_encoder.parameters()))),
+    #     lr=mi_lr,
+    #     momentum=0.9,
+    #     weight_decay=1e-4)
+    mi_opt = None
 
     optimizer = torch.optim.SGD(
         filter(
@@ -100,6 +118,7 @@ def run():
         lr=lr,
         momentum=0.9,
         weight_decay=1e-4)
+
 
     criterion = nn.BCEWithLogitsLoss().cuda()
     scheduler = ReduceLROnPlateau(optimizer, factor =  0.1, patience = 2)
@@ -117,7 +136,7 @@ def run():
             logger.log_value('learning_rate', lr, epoch)
 
         ep = epoch
-        training(dataloaders['train'], model, mi_encoder, criterion, optimizer, epoch, logger, alpha, beta)
+        training(dataloaders['train'], model, mi_encoder, criterion, optimizer, mi_opt, epoch, logger, alpha, beta)
 
         # evaluate on validation set
         new_auc, new_loss = validate(dataloaders['val'], model, mi_encoder, criterion, epoch, logger, THRESHOLD)

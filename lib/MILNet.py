@@ -8,7 +8,7 @@ import torch.utils.data
 from torch.autograd import Variable
 from torchvision.models.resnet import conv1x1, resnet18, ResNet, BasicBlock, Bottleneck
 from lib.mi_networks import *
-from lib.utils import grad_reverse
+from lib.utils import grad_reverse, GRL
 
 # TODO
 # Concate / Add the orignal X together with the masked X to improve performance
@@ -47,7 +47,7 @@ class MILNet(nn.Module):
         return low, z, y, m
 
 class MIEncoder(nn.Module):
-    def __init__(self, h, w, in_channel, mi_units = 64):
+    def __init__(self, h, w, in_channel, mi_units = 64, Lambda = 1):
         super(MIEncoder, self).__init__()
         self.Xnet = XEncoder(mi_units)
         self.Zlayer = LinearSeq(h * w, mi_units)
@@ -57,10 +57,13 @@ class MIEncoder(nn.Module):
         self.ZYlayer_2 = nn.Linear(mi_units, 1)
         self.Ynet_1 = LinearSeq(1, 1)
         self.Ynet_2 = nn.Linear(1, 1)
+        self.grad_reverse = grad_reverse
+        grl = GRL(Lambda)
+        self.grad_reverse = GRL.apply
 
+    """ GRL is still needed to avoid two complete backward (the second backward is only on mi_net now) """
     def forward(self, x, z, y):
         N, C, H, W = z.size()
-        # z = z.view(N, 1, C * H * W)
         x = grad_reverse(x)
         z = z.view(N, -1)
         x = self.Xnet(x)
@@ -77,7 +80,7 @@ class XEncoder(ResNet):
         super(XEncoder, self).__init__(BasicBlock, [2, 2, 2, 2], num_classes=1, zero_init_residual=True, )
         self.channel_merger = conv1x1(512, 1)
         self.out_bn = nn.BatchNorm2d(1)
-        # self.conv1 = nn.Conv2d(in_channel, 3, kernel_size=3, stride=1, padding=1,
+        # self.conv1 = nn.Conv2d(in_channel, 64, kernel_size=3, stride=1, padding=1,
         #                        bias=False)
         h, w = self.get_flattened_units(img_size)[2:]
         self.Xnet_1 = LinearSeq(h * w, mi_units)

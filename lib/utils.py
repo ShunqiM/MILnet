@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
-from torch.autograd import Variable
+from torch.autograd import Variable, Function
 from torchvision.models.resnet import ResNet, BasicBlock, Bottleneck
 import numpy as np
 
@@ -48,7 +48,7 @@ def get_feature_extractor():
     return model
 
 
-class GradReverse(torch.autograd.Function):
+class GradReverse(Function):
     def forward(self, x):
         return x
 
@@ -58,6 +58,40 @@ class GradReverse(torch.autograd.Function):
 def grad_reverse(x):
     return GradReverse()(x)
 
+class RevGrad(Function):
+    @staticmethod
+    def forward(ctx, input_):
+        ctx.save_for_backward(input_)
+        output = input_
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):  # pragma: no cover
+        grad_input = None
+        if ctx.needs_input_grad[0]:
+            grad_input = -grad_output
+        return grad_input
+
+class GRL(Function):
+    def __init__(self, Lambda):
+        super(GRL, self).__init__()
+        self.Lambda = Lambda
+    def forward(self, x):
+        return x.view_as(x)
+    def backward(self, grad_output):
+        grad_input = grad_output.clone()
+        return grad_input*(-self.Lambda)
+    def set_lambda(self, Lambda):
+        self.Lambda = Lambda
+
+
+def freeze_network(model):
+    for name, p in model.named_parameters():
+        p.requires_grad = False
+
+def unfreeze_network(model):
+    for name, p in model.named_parameters():
+        p.requires_grad = True
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     """Saves checkpoint to disk"""

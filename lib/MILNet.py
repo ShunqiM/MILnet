@@ -12,7 +12,7 @@ from lib.utils import grad_reverse, GRL
 
 # TODO
 # Concate / Add the orignal X together with the masked X to improve performance
-# Remove unnecessarry low feature preservation
+# Should I remove unnecessarry low feature preservation?
 
 class LinearSeq(nn.Module):
     def __init__(self, in_units, out_units):
@@ -36,6 +36,7 @@ class MILNet(nn.Module):
         self.cnet = classifier # classifier network: cannot use pretrained, maybe resnet18?
         self.t = t
 
+
     def forward(self, x):
         shape = x.shape[2:]
         low, feat = self.fe(x) # the output of this layer is preserved for local MI maximization and global MI minimization:I(z,x)
@@ -44,12 +45,15 @@ class MILNet(nn.Module):
         m = F.relu(torch.sigmoid(m) - self.t)
         x = x * m  # NOTE be sure their shape matched here.
         y = self.cnet(x)
+        # threshold added
+        tmp = torch.zeros(z.shape)
+        z = torch.where(z > self.t, z, tmp)
         return low, z, y, m
 
 class MIEncoder(nn.Module):
     def __init__(self, h, w, in_channel, mi_units = 64, Lambda = 1):
         super(MIEncoder, self).__init__()
-        self.Xnet = XEncoder(mi_units)
+        self.Xnet = XEncoder(mi_units, in_channel)
         self.Zlayer = LinearSeq(h * w, mi_units)
         self.ZXlayer_1 = LinearSeq(mi_units, mi_units) # NOTE Can MI be minimized??
         self.ZXlayer_2 = LinearSeq(mi_units, mi_units)
@@ -57,30 +61,31 @@ class MIEncoder(nn.Module):
         self.ZYlayer_2 = nn.Linear(mi_units, 1)
         self.Ynet_1 = LinearSeq(1, 1)
         self.Ynet_2 = nn.Linear(1, 1)
-        self.grad_reverse = grad_reverse
-        grl = GRL(Lambda)
-        self.grad_reverse = GRL.apply
+        # self.grad_reverse = grad_reverse
+        self.grl = GRL(Lambda)
+        self.grad_reverse = self.grl.apply
 
     """ GRL is still needed to avoid two complete backward (the second backward is only on mi_net now) """
     def forward(self, x, z, y):
         N, C, H, W = z.size()
-        x = grad_reverse(x)
+        x = self.grad_reverse(x)
         z = z.view(N, -1)
         x = self.Xnet(x)
         z = self.Zlayer(z)
         zy = self.ZYlayer_2(self.ZYlayer_1(z))
-        zx = self.ZXlayer_2(self.ZXlayer_1(grad_reverse(z)))
+        zx = self.ZXlayer_2(self.ZXlayer_1(self.grad_reverse(z)))
         y = y.unsqueeze(1)
         y = self.Ynet_2(self.Ynet_1(y))
         return x, zx, zy, y
 
 """ An convolutional encoder that is able to preserve spatial properties """
 class XEncoder(ResNet):
-    def __init__(self, mi_units, img_size = 224):
-        super(XEncoder, self).__init__(BasicBlock, [2, 2, 2, 2], num_classes=1, zero_init_residual=True, )
+    def __init__(self, mi_units, in_channel, img_size = 224):
+        super(XEncoder, self).__init__(BasicBlock, [2, 2, 2, 2], num_classes=1, zero_init_residual=True)
+        self.in_channels = 3
         self.channel_merger = conv1x1(512, 1)
         self.out_bn = nn.BatchNorm2d(1)
-        # self.conv1 = nn.Conv2d(in_channel, 64, kernel_size=3, stride=1, padding=1,
+        # self.conv1 = nn.Conv2d(self.in_channels, 64, kernel_size=3, stride=1, padding=1,
         #                        bias=False)
         h, w = self.get_flattened_units(img_size)[2:]
         self.Xnet_1 = LinearSeq(h * w, mi_units)
@@ -108,7 +113,7 @@ class XEncoder(ResNet):
         return x
 
     def get_flattened_units(self, img_size):
-        random = torch.randn(1, 3, img_size, img_size).float()
+        random = torch.randn(1, self.in_channels, img_size, img_size).float()
         # The out shape is b, 512, 14, 14
         shape = self.conv_forward(random).shape
         return shape

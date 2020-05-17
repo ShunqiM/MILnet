@@ -73,16 +73,22 @@ class RevGrad(Function):
         return grad_input
 
 class GRL(Function):
-    def __init__(self, Lambda):
+    Lambda = 1
+
+    def __init__(self, L):
         super(GRL, self).__init__()
-        self.Lambda = Lambda
+        GRL.Lambda = L
+    @staticmethod
     def forward(self, x):
         return x.view_as(x)
+    @staticmethod
     def backward(self, grad_output):
         grad_input = grad_output.clone()
-        return grad_input*(-self.Lambda)
-    def set_lambda(self, Lambda):
-        self.Lambda = Lambda
+        # return grad_input*(-0.5)
+        # print(GRL.Lambda)
+        return grad_input*(-GRL.Lambda)
+    def set_lambda(self, L):
+        GRL.Lambda = L
 
 
 def freeze_network(model):

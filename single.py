@@ -155,7 +155,7 @@ def run():
             'best_auc': best_auc,
             'scheduler': scheduler.state_dict()
         }, is_best, str(par_set)+"_epoch"+str(epoch))
-        exit()
+        # exit()
     print('Best accuracy: ', best_auc)
 
 

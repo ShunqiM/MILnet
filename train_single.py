@@ -18,9 +18,11 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "test"
-alpha = 10
-beta = 1
+# TODO figure out the way to change lambda dynamically
+
+par_set = "c11"
+alpha = 0.5
+beta = 0.3
 THRESHOLD = 0.7
 network_threshold = 0.2
 mi_units = 256
@@ -28,7 +30,7 @@ load_model = False
 size = 224
 lr = 0.01
 mi_lr = 0.01
-Lambda = 1
+Lambda = 0.5
 bat = 16
 validate_log_freq = 1600/bat
 log_freq = 16000/bat

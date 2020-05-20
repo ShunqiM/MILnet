@@ -18,10 +18,9 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-# TODO figure out the way to change lambda dynamically
 
-par_set = "c11"
-alpha = 0.5
+par_set = "c25"
+alpha = 1
 beta = 0.3
 THRESHOLD = 0.7
 network_threshold = 0.2
@@ -31,6 +30,7 @@ size = 224
 lr = 0.01
 mi_lr = 0.01
 Lambda = 0.5
+zt = 0.01
 bat = 16
 validate_log_freq = 1600/bat
 log_freq = 16000/bat
@@ -66,9 +66,7 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
         loss = predict_loss - alpha * zx_ploss + beta * zy_loss
 
         loss.backward(retain_graph = True)
-        # optimizer.step()
-        #
-        # optimizer.zero_grad()
+
         """ Step does not need model to be unfreezed, backward does """
         freeze_network(model)
         neg_loss = alpha * zx_nloss

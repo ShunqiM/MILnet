@@ -26,7 +26,7 @@ class LinearSeq(nn.Module):
 
 
 class MILNet(nn.Module):
-    def __init__(self, feature_extractor, classifier, t = 0.5):
+    def __init__(self, feature_extractor, classifier, t = 0.5, zt = 0.2):
         super(MILNet, self).__init__()
         self.mask_generator = conv1x1(feature_extractor.get_channel_num(), 1)
         for m in self.modules():
@@ -35,6 +35,7 @@ class MILNet(nn.Module):
         self.fe = feature_extractor
         self.cnet = classifier # classifier network: cannot use pretrained, maybe resnet18?
         self.t = t
+        self.zt = zt
 
 
     def forward(self, x):
@@ -47,7 +48,12 @@ class MILNet(nn.Module):
         y = self.cnet(x)
         # threshold added
         tmp = torch.zeros(z.shape)
-        z = torch.where(z > self.t, z, tmp)
+        # z = F.sigmoid(z) # z.shape = torch.Size([16, 1, 7, 7])
+        b, c, h, w = z.shape
+        z = z.view(b, c, -1)
+        z = F.softmax(z, dim = 2)
+        z = z.view(b, c, h, w)
+        z = torch.where(z > self.zt, z, tmp)
         return low, z, y, m
 
 class MIEncoder(nn.Module):

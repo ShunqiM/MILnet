@@ -90,7 +90,7 @@ def run():
     fe = get_feature_extractor()
     classifier = models.resnet50(pretrained=True)
     classifier.fc = nn.Linear(fe.get_channel_num(), 1)
-    model = MILNet(fe, classifier, t = network_threshold)
+    model = MILNet(fe, classifier, t = network_threshold, zt = zt)
     mi_encoder = MIEncoder(7, 7, model.fe.get_local_channel_num(), mi_units, Lambda)
 
     # NOTE The main reason we need two optimizer is that they need different learning rate
@@ -126,7 +126,7 @@ def run():
 
     if load_model:
         model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(
-                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\a12_epoch0")
+                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\c23_epoch0")
         # adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
         model = model.cuda()
 

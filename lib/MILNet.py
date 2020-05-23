@@ -37,7 +37,6 @@ class MILNet(nn.Module):
         self.t = t
         self.zt = zt
 
-
     def forward(self, x):
         shape = x.shape[2:]
         low, feat = self.fe(x) # the output of this layer is preserved for local MI maximization and global MI minimization:I(z,x)
@@ -49,10 +48,10 @@ class MILNet(nn.Module):
         # threshold added
         tmp = torch.zeros(z.shape)
         # z = F.sigmoid(z) # z.shape = torch.Size([16, 1, 7, 7])
-        b, c, h, w = z.shape
-        z = z.view(b, c, -1)
-        z = F.softmax(z, dim = 2)
-        z = z.view(b, c, h, w)
+        # b, c, h, w = z.shape
+        # z = z.view(b, c, -1)
+        # z = F.softmax(z, dim = 2)
+        # z = z.view(b, c, h, w)
         z = torch.where(z > self.zt, z, tmp)
         return low, z, y, m
 
@@ -88,11 +87,11 @@ class MIEncoder(nn.Module):
 class XEncoder(ResNet):
     def __init__(self, mi_units, in_channel, img_size = 224):
         super(XEncoder, self).__init__(BasicBlock, [2, 2, 2, 2], num_classes=1, zero_init_residual=True)
-        self.in_channels = 3
+        self.in_channels = in_channel
         self.channel_merger = conv1x1(512, 1)
         self.out_bn = nn.BatchNorm2d(1)
-        # self.conv1 = nn.Conv2d(self.in_channels, 64, kernel_size=3, stride=1, padding=1,
-        #                        bias=False)
+        self.conv1 = nn.Conv2d(self.in_channels, 64, kernel_size=3, stride=1, padding=1,
+                               bias=False)
         h, w = self.get_flattened_units(img_size)[2:]
         self.Xnet_1 = LinearSeq(h * w, mi_units)
         self.Xnet_2 = LinearSeq(mi_units, mi_units)
@@ -119,7 +118,7 @@ class XEncoder(ResNet):
         return x
 
     def get_flattened_units(self, img_size):
-        random = torch.randn(1, self.in_channels, img_size, img_size).float()
+        random = torch.randn(1, self.in_channels, 56, 56).float() # turn from 49 to 784
         # The out shape is b, 512, 14, 14
         shape = self.conv_forward(random).shape
         return shape

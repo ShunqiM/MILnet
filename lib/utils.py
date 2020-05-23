@@ -3,6 +3,7 @@ import shutil
 from torchvision import models
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
@@ -34,7 +35,7 @@ class FeatureExtrator(ResNet):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        return low, x
+        return low.detach(), x
 
     def get_channel_num(self):
         return 512 * Bottleneck.expansion

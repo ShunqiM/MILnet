@@ -18,19 +18,18 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-
-par_set = "c25"
-alpha = 1
-beta = 0.3
+par_set = "c32"
+alpha = 0.1
+beta = 3
 THRESHOLD = 0.7
 network_threshold = 0.2
 mi_units = 256
-load_model = False
+load_model = True
 size = 224
 lr = 0.01
 mi_lr = 0.01
 Lambda = 0.5
-zt = 0.01
+zt = 0.2
 bat = 16
 validate_log_freq = 1600/bat
 log_freq = 16000/bat
@@ -53,7 +52,7 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
         input_var = input.cuda(non_blocking=True)
 
         x, z, output, m = model(input_var)
-        xc, zx, zy, yc = mi_encoder(input_var, z, target_var)
+        xc, zx, zy, yc = mi_encoder(x, z, target_var)
 
         optimizer.zero_grad()
         # mi_opt.zero_grad()
@@ -127,7 +126,7 @@ def validate(val_loader, model, mi_encoder, criterion, epoch, logger, threshold 
             target_var = torch.autograd.Variable(target)
 
             x, z, output, m = model(input_var)
-            xc, zx, zy, yc = mi_encoder(input_var, z, target_var)
+            xc, zx, zy, yc = mi_encoder(x, z, target_var)
 
             # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
             predict_loss = criterion(output, target_var)

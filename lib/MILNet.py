@@ -41,18 +41,22 @@ class MILNet(nn.Module):
         shape = x.shape[2:]
         low, feat = self.fe(x) # the output of this layer is preserved for local MI maximization and global MI minimization:I(z,x)
         z = self.mask_generator(feat)
+        # np.savetxt("tensorz.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
+        # exit()
         m = F.interpolate(z, shape, mode = 'bicubic') # Is there a better mode for interpolate instead of bicubic?
         m = F.relu(torch.sigmoid(m) - self.t)
         x = x * m  # NOTE be sure their shape matched here.
         y = self.cnet(x)
         # threshold added
-        tmp = torch.zeros(z.shape)
         # z = F.sigmoid(z) # z.shape = torch.Size([16, 1, 7, 7])
         # b, c, h, w = z.shape
         # z = z.view(b, c, -1)
         # z = F.softmax(z, dim = 2)
         # z = z.view(b, c, h, w)
-        z = torch.where(z > self.zt, z, tmp)
+        # tmp = torch.zeros(z.shape)
+        # z = torch.where(z > self.zt, z, tmp)
+        # z = F.relu(torch.sigmoid(z) - self.zt)
+        z = F.relu(z - self.zt)
         return low, z, y, m
 
 class MIEncoder(nn.Module):

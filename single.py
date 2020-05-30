@@ -126,7 +126,7 @@ def run():
 
     if load_model:
         model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(
-                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\c31_epoch0")
+                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\c33_epoch4")
         # adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
         model = model.cuda()
 

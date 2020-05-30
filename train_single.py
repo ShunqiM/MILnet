@@ -2,6 +2,7 @@ import os
 import time
 
 import torch
+import torchvision
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import torch.optim
@@ -18,13 +19,13 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "c32"
-alpha = 0.1
-beta = 3
+par_set = "c43"
+alpha = 1
+beta = 4
 THRESHOLD = 0.7
 network_threshold = 0.2
 mi_units = 256
-load_model = True
+load_model = False
 size = 224
 lr = 0.01
 mi_lr = 0.01
@@ -35,6 +36,7 @@ validate_log_freq = 1600/bat
 log_freq = 16000/bat
 print_freq = 2
 
+# TODO: 1. Dropout MI network  2. Dropout fe netowork 3. noisy network
 
 def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoch, logger, alpha, beta, measure = 'JSD'):
     """Train for one epoch on the training set"""
@@ -50,7 +52,6 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
     for i, (input, target, name, bboxes) in enumerate(BackgroundGenerator(train_loader)):
         target_var = target.float().cuda(non_blocking=True)
         input_var = input.cuda(non_blocking=True)
-
         x, z, output, m = model(input_var)
         xc, zx, zy, yc = mi_encoder(x, z, target_var)
 
@@ -179,6 +180,7 @@ def localize(loc_loader, model, mi_encoder, epoch, logger, threshold = 0.5):
     average_fnr = AverageMeter()
     model.eval()
     bat = loc_loader.batch_size
+    printed = False
     with torch.no_grad():
         for i, (input, name, bboxes) in enumerate(BackgroundGenerator(loc_loader)):
             input = input.cuda(non_blocking=True)
@@ -187,6 +189,13 @@ def localize(loc_loader, model, mi_encoder, epoch, logger, threshold = 0.5):
             bboxes = bboxes[:, 1:]
 
             x, z, output, m = model(input_var)
+            if not printed:
+                printed = True
+                print(m[0])
+                np.savetxt("tensor.csv", m[0][0].detach().cpu().numpy(), delimiter=",")
+                for i in range(1):
+                    torchvision.utils.save_image(m[i][0], '/Users/LULU/MILNet/vis/' + str(par_set) + '_' + str(epoch) + '_' + str(name[i]))
+                    # torchvision.utils.save_image(m[1][0], '/Users/LULU/MILNet/vis/' + str(par_set) + '_' + str(epoch) + '_' + str(name[1]))
 
             evals, non_zero_cnt = evaluations(m, threshold, bboxes)
             # print(evals)  #NOTE What if there are no bounding boxes?

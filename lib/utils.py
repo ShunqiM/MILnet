@@ -11,15 +11,10 @@ from torch.autograd import Variable, Function
 from torchvision.models.resnet import ResNet, BasicBlock, Bottleneck
 import numpy as np
 
-# TODO Do we need heatmap -> bboxes
-# TODO Do we need IOU?
-# TODO ask about the bbox: top-down?
-# TODO FPR and FNR respectively to measure over- and under-predicted areas.
-
 class FeatureExtrator(ResNet):
     def __init__(self):
         super(FeatureExtrator, self).__init__(Bottleneck, [3, 4, 6, 3])
-        # self.channels = self.fc.in_features
+        self.drop = nn.Dropout2d(p = 0.2)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -31,8 +26,12 @@ class FeatureExtrator(ResNet):
 
         # low level features for MI computation
         low = x
+
+        x = self.drop(x)
         x = self.layer2(x)
+        x = self.drop(x)
         x = self.layer3(x)
+        x = self.drop(x)
         x = self.layer4(x)
 
         return low.detach(), x
@@ -90,6 +89,23 @@ class GRL(Function):
         return grad_input*(-GRL.Lambda)
     def set_lambda(self, L):
         GRL.Lambda = L
+
+
+class GaussianNoise(nn.Module):
+    """Gaussian noise regularizer."""
+
+    def __init__(self, sigma=0.1, is_relative_detach=True):
+        super().__init__()
+        self.sigma = sigma
+        self.is_relative_detach = is_relative_detach
+        self.noise = torch.tensor(0).to(device)
+
+    def forward(self, x):
+        if self.training and self.sigma != 0:
+            scale = self.sigma * x.detach() if self.is_relative_detach else self.sigma * x
+            sampled_noise = self.noise.repeat(*x.size()).normal_() * scale
+            x = x + sampled_noise
+        return x
 
 
 def freeze_network(model):

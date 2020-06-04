@@ -36,6 +36,7 @@ class MILNet(nn.Module):
         self.cnet = classifier # classifier network: cannot use pretrained, maybe resnet18?
         self.t = t
         self.zt = zt
+        self.norm = NopNet((2,3))
 
     def forward(self, x):
         shape = x.shape[2:]
@@ -43,6 +44,7 @@ class MILNet(nn.Module):
         z = self.mask_generator(feat)
         # np.savetxt("tensorz.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
         # exit()
+        # z = self.norm(z)
         m = F.interpolate(z, shape, mode = 'bicubic') # Is there a better mode for interpolate instead of bicubic?
         m = F.relu(torch.sigmoid(m) - self.t)
         x = x * m  # NOTE be sure their shape matched here.
@@ -53,16 +55,16 @@ class MILNet(nn.Module):
         # z = z.view(b, c, -1)
         # z = F.softmax(z, dim = 2)
         # z = z.view(b, c, h, w)
-        # tmp = torch.zeros(z.shape)
-        # z = torch.where(z > self.zt, z, tmp)
+        tmp = torch.zeros(z.shape)
+        z = torch.where(z > self.zt, z, tmp)
         # z = F.relu(torch.sigmoid(z) - self.zt)
-        z = F.relu(z - self.zt)
+        # z = F.relu(z - self.zt)
         return low, z, y, m
 
 class MIEncoder(nn.Module):
-    def __init__(self, h, w, in_channel, mi_units = 64, Lambda = 1):
+    def __init__(self, h, w, in_channel, mi_units = 64, Lambda = 1, compress = 1):
         super(MIEncoder, self).__init__()
-        self.Xnet = XEncoder(mi_units, in_channel)
+        self.Xnet = XEncoder(mi_units, in_channel, compress)
         self.Zlayer = LinearSeq(h * w, mi_units)
         self.ZXlayer_1 = LinearSeq(mi_units, mi_units) # NOTE Can MI be minimized??
         self.ZXlayer_2 = LinearSeq(mi_units, mi_units)
@@ -77,7 +79,7 @@ class MIEncoder(nn.Module):
     """ GRL is still needed to avoid two complete backward (the second backward is only on mi_net now) """
     def forward(self, x, z, y):
         N, C, H, W = z.size()
-        x = self.grad_reverse(x)
+        # x = self.grad_reverse(x)
         z = z.view(N, -1)
         x = self.Xnet(x)
         z = self.Zlayer(z)
@@ -89,15 +91,15 @@ class MIEncoder(nn.Module):
 
 """ An convolutional encoder that is able to preserve spatial properties """
 class XEncoder(ResNet):
-    def __init__(self, mi_units, in_channel, img_size = 224):
+    def __init__(self, mi_units, in_channel, compress, img_size = 224):
         super(XEncoder, self).__init__(BasicBlock, [2, 2, 2, 2], num_classes=1, zero_init_residual=True)
         self.in_channels = in_channel
-        self.channel_merger = conv1x1(512, 1)
-        self.out_bn = nn.BatchNorm2d(1)
+        self.channel_merger = conv1x1(512, compress)
+        self.out_bn = nn.BatchNorm2d(compress)
         self.conv1 = nn.Conv2d(self.in_channels, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
         h, w = self.get_flattened_units(img_size)[2:]
-        self.Xnet_1 = LinearSeq(h * w, mi_units)
+        self.Xnet_1 = LinearSeq(h * w * compress, mi_units)
         self.Xnet_2 = LinearSeq(mi_units, mi_units)
         self.Xnet_3 = LinearSeq(mi_units, mi_units)
 

@@ -91,7 +91,7 @@ def run():
     classifier = models.resnet50(pretrained=True)
     classifier.fc = nn.Linear(fe.get_channel_num(), 1)
     model = MILNet(fe, classifier, t = network_threshold, zt = zt)
-    mi_encoder = MIEncoder(7, 7, model.fe.get_local_channel_num(), mi_units, Lambda)
+    mi_encoder = MIEncoder(7, 7, model.fe.get_local_channel_num(), mi_units, Lambda, Compress)
 
     # NOTE The main reason we need two optimizer is that they need different learning rate
     # optimizer = torch.optim.SGD(
@@ -126,7 +126,7 @@ def run():
 
     if load_model:
         model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(
-                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\c33_epoch4")
+                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\c47_epoch0")
         # adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
         model = model.cuda()
 

@@ -14,7 +14,7 @@ import numpy as np
 class FeatureExtrator(ResNet):
     def __init__(self):
         super(FeatureExtrator, self).__init__(Bottleneck, [3, 4, 6, 3])
-        self.drop = nn.Dropout2d(p = 0.2)
+        # self.drop = nn.Dropout2d(p = 0.2)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -27,11 +27,11 @@ class FeatureExtrator(ResNet):
         # low level features for MI computation
         low = x
 
-        x = self.drop(x)
+        # x = self.drop(x)
         x = self.layer2(x)
-        x = self.drop(x)
+        # x = self.drop(x)
         x = self.layer3(x)
-        x = self.drop(x)
+        # x = self.drop(x)
         x = self.layer4(x)
 
         return low.detach(), x

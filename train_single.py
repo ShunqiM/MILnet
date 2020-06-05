@@ -19,7 +19,7 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "c51"
+par_set = "c54"
 alpha = 0.02
 beta = 0.1
 THRESHOLD = 0.6
@@ -29,7 +29,7 @@ load_model = False
 size = 224
 lr = 0.01
 mi_lr = 0.01
-Lambda = 0.5
+Lambda = 0.1
 zt = 0
 Compress = 1
 bat = 16

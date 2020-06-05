@@ -143,6 +143,7 @@ def run():
         iop, fpr, fnr = localize(dataloaders['loc'], model, mi_encoder, epoch, logger, THRESHOLD)
         # exit()
         scheduler.step(new_loss)
+        mi_encoder.update_GRL(0.05)
         best_auc = max(new_auc, best_auc)
         # remember best prec@1 and save checkpoint
         is_best = new_loss < best_loss

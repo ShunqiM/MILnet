@@ -89,6 +89,10 @@ class MIEncoder(nn.Module):
         y = self.Ynet_2(self.Ynet_1(y))
         return x, zx, zy, y
 
+    def update_GRL(self, delta):
+        GRL.Lambda += delta
+        self.grad_reverse = self.grl.apply
+
 """ An convolutional encoder that is able to preserve spatial properties """
 class XEncoder(ResNet):
     def __init__(self, mi_units, in_channel, compress, img_size = 224):

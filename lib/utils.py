@@ -116,6 +116,24 @@ def unfreeze_network(model):
     for name, p in model.named_parameters():
         p.requires_grad = True
 
+def normalize(a):
+    AA = a.clone()
+    b, c, h, w = AA.shape
+    AA = AA.view(b, -1)
+    AA -= AA.min(1, keepdim=True)[0]
+    AA /= AA.max(1, keepdim=True)[0]
+    AA = AA.view(b, c, h, w)
+    return AA
+
+def normalize_(AA):
+    b, c, h, w = AA.shape
+    AA = AA.view(b, -1)
+    AA -= AA.min(1, keepdim=True)[0]
+    AA /= AA.max(1, keepdim=True)[0]
+    AA = AA.view(b, c, h, w)
+    return AA
+
+
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     """Saves checkpoint to disk"""
     directory = "D:\\X\\2019S2\\3912\\MILN_models\\"

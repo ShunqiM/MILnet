@@ -8,7 +8,7 @@ import torch.utils.data
 from torch.autograd import Variable
 from torchvision.models.resnet import conv1x1, resnet18, ResNet, BasicBlock, Bottleneck
 from lib.mi_networks import *
-from lib.utils import grad_reverse, GRL
+from lib.utils import grad_reverse, GRL, normalize_, normalize
 
 # TODO
 # Concate / Add the orignal X together with the masked X to improve performance
@@ -44,9 +44,10 @@ class MILNet(nn.Module):
         z = self.mask_generator(feat)
         # np.savetxt("tensorz.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
         # exit()
-        # z = self.norm(z)
+        z = normalize(self.norm(z))
         m = F.interpolate(z, shape, mode = 'bicubic') # Is there a better mode for interpolate instead of bicubic?
-        m = F.relu(torch.sigmoid(m) - self.t)
+        # m = F.relu(torch.sigmoid(m) - self.t)
+        m = m - self.t
         x = x * m  # NOTE be sure their shape matched here.
         y = self.cnet(x)
         # threshold added
@@ -68,8 +69,8 @@ class MIEncoder(nn.Module):
         self.Zlayer = LinearSeq(h * w, mi_units)
         self.ZXlayer_1 = LinearSeq(mi_units, mi_units) # NOTE Can MI be minimized??
         self.ZXlayer_2 = LinearSeq(mi_units, mi_units)
-        self.ZYlayer_1 = LinearSeq(mi_units, mi_units) # For multi-class problem this should be 14*1 vector
-        self.ZYlayer_2 = nn.Linear(mi_units, 1)
+        self.ZYlayer_1 = LinearSeq(mi_units, int(mi_units/8)) # For multi-class problem this should be 14*1 vector
+        self.ZYlayer_2 = nn.Linear(int(mi_units/8) , 1)
         self.Ynet_1 = LinearSeq(1, 1)
         self.Ynet_2 = nn.Linear(1, 1)
         # self.grad_reverse = grad_reverse

@@ -19,11 +19,11 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "c54"
-alpha = 0.02
-beta = 0.1
-THRESHOLD = 0.6
-network_threshold = 0.2
+par_set = "c59"
+alpha = 0.01
+beta = 1
+THRESHOLD = 0.5
+network_threshold = 0.
 mi_units = 256
 load_model = False
 size = 224
@@ -190,12 +190,14 @@ def localize(loc_loader, model, mi_encoder, epoch, logger, threshold = 0.5):
             bboxes = bboxes[:, 1:]
 
             x, z, output, m = model(input_var)
+
+
             if not printed:
                 printed = True
                 print(m[0])
                 np.savetxt("tensor.csv", m[0][0].detach().cpu().numpy(), delimiter=",")
                 for i in range(1):
-                    torchvision.utils.save_image(m[i][0], '/Users/LULU/MILNet/vis/' + str(par_set) + '_' + str(epoch) + '_' + str(name[i]))
+                    torchvision.utils.save_image(normalize(m)[i][0], '/Users/LULU/MILNet/vis/' + str(par_set) + '_' + str(epoch) + '_' + str(name[i]))
                     # torchvision.utils.save_image(m[1][0], '/Users/LULU/MILNet/vis/' + str(par_set) + '_' + str(epoch) + '_' + str(name[1]))
 
             evals, non_zero_cnt = evaluations(m, threshold, bboxes)

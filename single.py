@@ -126,8 +126,10 @@ def run():
 
     if load_model:
         model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(
-                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\c47_epoch0")
+                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\c58_epoch0")
         # adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
+        mi_encoder.grl.Lambda = 0.3
+        print(mi_encoder.grl.Lambda)
         model = model.cuda()
 
     for epoch in range(start_epoch, 100):
@@ -136,14 +138,15 @@ def run():
             logger.log_value('learning_rate', lr, epoch)
 
         ep = epoch
-        training(dataloaders['train'], model, mi_encoder, criterion, optimizer, mi_opt, epoch, logger, alpha, beta)
+        # training(dataloaders['train'], model, mi_encoder, criterion, optimizer, mi_opt, epoch, logger, alpha, beta)
 
         # evaluate on validation set
-        new_auc, new_loss = validate(dataloaders['val'], model, mi_encoder, criterion, epoch, logger, THRESHOLD)
+        # new_auc, new_loss = validate(dataloaders['val'], model, mi_encoder, criterion, epoch, logger, THRESHOLD)
         iop, fpr, fnr = localize(dataloaders['loc'], model, mi_encoder, epoch, logger, THRESHOLD)
-        # exit()
+        exit()
         scheduler.step(new_loss)
         mi_encoder.update_GRL(0.05)
+        logger.log_value('lambda', mi_encoder.grl.Lambda, epoch)
         best_auc = max(new_auc, best_auc)
         # remember best prec@1 and save checkpoint
         is_best = new_loss < best_loss

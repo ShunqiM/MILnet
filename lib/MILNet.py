@@ -46,8 +46,9 @@ class MILNet(nn.Module):
         # exit()
         z = normalize(self.norm(z))
         m = F.interpolate(z, shape, mode = 'bicubic') # Is there a better mode for interpolate instead of bicubic?
-        # m = F.relu(torch.sigmoid(m) - self.t)
-        m = m - self.t
+        m = F.relu(torch.sigmoid(m) - self.t)
+        # m = F.relu(m - self.t)
+        # m = m - self.t
         x = x * m  # NOTE be sure their shape matched here.
         y = self.cnet(x)
         # threshold added
@@ -60,6 +61,7 @@ class MILNet(nn.Module):
         z = torch.where(z > self.zt, z, tmp)
         # z = F.relu(torch.sigmoid(z) - self.zt)
         # z = F.relu(z - self.zt)
+        m = normalize(m)
         return low, z, y, m
 
 class MIEncoder(nn.Module):

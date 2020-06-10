@@ -19,18 +19,18 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "c59"
+par_set = "c61"
 alpha = 0.01
 beta = 1
-THRESHOLD = 0.5
-network_threshold = 0.
+THRESHOLD = 0.8
+network_threshold = 0
 mi_units = 256
 load_model = False
 size = 224
 lr = 0.01
 mi_lr = 0.01
 Lambda = 0.1
-zt = 0
+zt = 0.2
 Compress = 1
 bat = 16
 validate_log_freq = 1600/bat

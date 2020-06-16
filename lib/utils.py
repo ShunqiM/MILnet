@@ -125,6 +125,15 @@ def normalize(a):
     AA = AA.view(b, c, h, w)
     return AA
 
+# def normalize(a, low, up):
+#     AA = normalize(a)
+#     return AA
+
+def from_01(a):
+    AA = a.clone()
+    AA = (AA - 0.5) * 2
+    return AA
+
 def normalize_(AA):
     b, c, h, w = AA.shape
     AA = AA.view(b, -1)

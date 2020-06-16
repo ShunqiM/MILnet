@@ -23,11 +23,6 @@ def run():
     logger = Logger(logdir="/Users/LULU/MILNet/logger/" + par_set, flush_secs=6)
 
 
-    np.random.seed(0)
-    torch.manual_seed(3)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
     csv_path = "D:\\X\\2019S2\\3912\\CXR8\\Data_Entry_2017.csv"
     root_dir = "D:\\X\\2019S2\\3912\\CXR8\\images\\images"
     train_path = "D:\\X\\2019S2\\3912\\CXR8\\train.csv"
@@ -126,9 +121,9 @@ def run():
 
     if load_model:
         model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(
-                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\c59_epoch1")
+                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\c68_epoch0")
         # adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
-        mi_encoder.grl.Lambda = 0.2
+        mi_encoder.grl.Lambda = 0.02
         print(mi_encoder.grl.Lambda)
         model = model.cuda()
 
@@ -145,7 +140,7 @@ def run():
         iop, fpr, fnr = localize(dataloaders['loc'], model, mi_encoder, epoch, logger, THRESHOLD)
         # exit()
         scheduler.step(new_loss)
-        mi_encoder.update_GRL(0.05)
+        mi_encoder.update_GRL(0.01)
         logger.log_value('lambda', mi_encoder.grl.Lambda, epoch)
         best_auc = max(new_auc, best_auc)
         # remember best prec@1 and save checkpoint
@@ -165,4 +160,8 @@ def run():
 
 
 if __name__ == '__main__':
+    np.random.seed(1)
+    torch.manual_seed(3)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
     run()

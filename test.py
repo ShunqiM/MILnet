@@ -6,6 +6,7 @@ from torchvision import models
 import signal
 import numpy as np
 import pandas as pd
+import torch.nn.functional as F
 from lib.cxr_dataset import *
 import time
 from lib.utils import *
@@ -16,6 +17,7 @@ from lib.mi_loss import *
 
 from prefetch_generator import BackgroundGenerator
 from lib.evaluation_funtions import *
+from lib.utils import grad_reverse, GRL, normalize_, normalize, from_01
 
 print_freq = 2
 load_model = False
@@ -143,7 +145,55 @@ def run():
 # print(x.grad)
 # print(y.grad)
 
+# n = 3
+# a = torch.arange(n).unsqueeze(1) # [n, 1]
+# b = torch.ones(4).view(2, 2) # [2, 2]
+#
+# a[:, :, None] * b # [n, 2, 2]
+#
+#
+# x = torch.randn((2))
+# y = torch.ones((2, 3, 3))
+# print(x)
+# z = y[None :, :] * x
+# print(z)
+# # print(torch.bmm(x, y))
+a = torch.ones((2,2,3,3))
+m = torch.randn((2,1,6,6))
+m = F.interpolate(m, [3,3], mode = 'bicubic')
+print(m.shape)
+print(a*m)
+exit()
 
+y = torch.ones((1,2,2,2), requires_grad = True)
+y[0][0] = torch.zeros((2,2), requires_grad = True)
+print(y)
+
+x = F.log_softmax(y, 2)
+print(x)
+exit()
+x = y + 1
+print(x)
+z = x + x
+print(z)
+# s1 = z.mean()
+# s1.backward()
+# exit()
+# print(z.grad)
+tmp = torch.zeros(z.shape)
+z = torch.where(z >= 0, z, tmp)
+zz = z.view(1, 1, 2, 2)
+print(zz)
+# print(zz.grad)
+# zz = normalize(zz)
+print('n', zz)
+# print(zz.grad)
+s = zz.sum()
+s.backward()
+print(zz)
+# print(zz.grad)
+print(y.grad)
+exit()
 
 criterion = nn.BCEWithLogitsLoss().cuda()
 fe = get_feature_extractor()

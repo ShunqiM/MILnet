@@ -8,21 +8,25 @@ import torch.utils.data
 from torch.autograd import Variable
 from torchvision.models.resnet import conv1x1, resnet18, ResNet, BasicBlock, Bottleneck
 from lib.mi_networks import *
-from lib.utils import grad_reverse, GRL, normalize_, normalize
+from lib.utils import grad_reverse, GRL, normalize_, normalize, from_01
 
 # TODO
 # Concate / Add the orignal X together with the masked X to improve performance
 # Should I remove unnecessarry low feature preservation?
 
 class LinearSeq(nn.Module):
-    def __init__(self, in_units, out_units):
+    def __init__(self, in_units, out_units, drop_rate = 0.2):
         super(LinearSeq, self).__init__()
+        # if in_units == 1:
+        #     drop_rate = 0
+        # self.drop = nn.Dropout(drop_rate)
         self.linear = nn.Linear(in_units, out_units)
         self.norm = nn.BatchNorm1d(out_units)
         self.relu = nn.ReLU()
 
     def forward(self, x):
         return self.relu(self.norm(self.linear(x)))
+        # return self.relu(self.norm(self.linear(self.drop(x))))
 
 
 class MILNet(nn.Module):
@@ -43,13 +47,20 @@ class MILNet(nn.Module):
         low, feat = self.fe(x) # the output of this layer is preserved for local MI maximization and global MI minimization:I(z,x)
         z = self.mask_generator(feat)
         # np.savetxt("tensorz.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
-        # exit()
         z = normalize(self.norm(z))
+        # z = self.norm(z)
+        # np.savetxt("tensorznorm.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
+        # exit()
+        # z = normalize(z)
+        # z = F.relu(torch.sigmoid(z) - self.t)
+        # z = F.relu(normalize(F.log_softmax(z, 2) * (-1.0)) - self.t)
         m = F.interpolate(z, shape, mode = 'bicubic') # Is there a better mode for interpolate instead of bicubic?
-        m = F.relu(torch.sigmoid(m) - self.t)
+        m1 = F.relu(torch.sigmoid(m) - self.t)
+        # m = torch.sigmoid(m) - self.t
+        # m = normalize(m)
         # m = F.relu(m - self.t)
         # m = m - self.t
-        x = x * m  # NOTE be sure their shape matched here.
+        x = x * m1 + x # NOTE be sure their shape matched here.
         y = self.cnet(x)
         # threshold added
         # z = F.sigmoid(z) # z.shape = torch.Size([16, 1, 7, 7])
@@ -57,11 +68,10 @@ class MILNet(nn.Module):
         # z = z.view(b, c, -1)
         # z = F.softmax(z, dim = 2)
         # z = z.view(b, c, h, w)
-        tmp = torch.zeros(z.shape)
-        z = torch.where(z > self.zt, z, tmp)
-        # z = F.relu(torch.sigmoid(z) - self.zt)
-        # z = F.relu(z - self.zt)
-        m = normalize(m)
+
+        # tmp = torch.zeros(z.shape)
+        # z = torch.where(z >= self.zt, z, tmp)
+
         return low, z, y, m
 
 class MIEncoder(nn.Module):
@@ -135,3 +145,37 @@ class XEncoder(ResNet):
         # The out shape is b, 512, 14, 14
         shape = self.conv_forward(random).shape
         return shape
+
+
+class Classifier(ResNet):
+    def __init__(self):
+        super(Classifier, self).__init__(Bottleneck, [3, 4, 6, 3])
+
+    def forward(self, x, m):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        shape = x.shape[2:]
+        # m = m.view(b, m.size(2), m.size(3))
+        m = F.interpolate(m, shape, mode = 'bicubic')
+        m = x * m
+        m = self.avgpool(m)
+
+        x = self.avgpool(x)
+        x = x + m
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+
+        return x
+
+def get_classifier(channel):
+    model = Classifier()
+    model.load_state_dict(models.resnet50(pretrained=True).state_dict())
+    model.fc = nn.Linear(channel, 1)
+    return model

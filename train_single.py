@@ -19,17 +19,17 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "c61"
-alpha = 0.01
+par_set = "c79"
+alpha = 0.1
 beta = 1
 THRESHOLD = 0.5
-network_threshold = 0.2
+network_threshold = 0.
 mi_units = 256
 load_model = False
 size = 224
 lr = 0.01
 mi_lr = 0.01
-Lambda = 0.1
+Lambda = 0.01
 zt = 0
 Compress = 1
 bat = 16
@@ -50,11 +50,18 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
     mi_encoder.train()
     end = time.time()
     bat = train_loader.batch_size
+    # seg_crit = nn.BCELoss()
     for i, (input, target, name, bboxes) in enumerate(BackgroundGenerator(train_loader)):
         target_var = target.float().cuda(non_blocking=True)
         input_var = input.cuda(non_blocking=True)
         x, z, output, m = model(input_var)
         xc, zx, zy, yc = mi_encoder(x, z, target_var)
+        # t = target_var.unsqueeze(1)
+        # seg = torch.ones((m.size(2), m.size(3))).float()
+        # seg_label = target_var[:, :, None] * seg
+        # seg_label = seg_label.view(target_var.size(0), 1, m.size(2), m.size(3))
+        # seg_label = torch.where(seg_label == 0, seg_label, m)
+        # seg_loss = seg_crit(m, seg_label.detach())
 
         optimizer.zero_grad()
         # mi_opt.zero_grad()
@@ -65,7 +72,7 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
         zy_loss = scalar_loss(zy, yc, measure)
         """ zx_ploss is the disimilarity between z x and should be minimized in mi network """
         loss = predict_loss - alpha * zx_ploss + beta * zy_loss
-
+        # loss += seg_loss * 0.01
         loss.backward(retain_graph = True)
 
         """ Step does not need model to be unfreezed, backward does """
@@ -190,7 +197,8 @@ def localize(loc_loader, model, mi_encoder, epoch, logger, threshold = 0.5):
             bboxes = bboxes[:, 1:]
 
             x, z, output, m = model(input_var)
-
+            m = normalize(m)
+            # m = 1.0 - m
 
             if not printed:
                 printed = True

@@ -19,19 +19,21 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "c79"
+par_set = "e4"
 alpha = 0.1
-beta = 1
-THRESHOLD = 0.5
-network_threshold = 0.
-mi_units = 256
+beta = 3
+THRESHOLD = 0.8
+network_threshold = 0.2
+mi_units = 64
+x_units = 64
 load_model = False
 size = 224
 lr = 0.01
 mi_lr = 0.01
-Lambda = 0.01
+Lambda = 0.05
+L2 = 1e-5
 zt = 0
-Compress = 1
+Compress = 2
 bat = 16
 validate_log_freq = 1600/bat
 log_freq = 16000/bat
@@ -65,13 +67,13 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
 
         optimizer.zero_grad()
         # mi_opt.zero_grad()
-
+        act_loss = (z ** 2).sum(1).mean()
         # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
         predict_loss = criterion(output, target_var)
         zx_nloss, zx_ploss = vector_loss(xc, zx, measure, True)
         zy_loss = scalar_loss(zy, yc, measure)
         """ zx_ploss is the disimilarity between z x and should be minimized in mi network """
-        loss = predict_loss - alpha * zx_ploss + beta * zy_loss
+        loss = predict_loss - alpha * zx_ploss + beta * zy_loss + act_loss * L2
         # loss += seg_loss * 0.01
         loss.backward(retain_graph = True)
 
@@ -136,12 +138,12 @@ def validate(val_loader, model, mi_encoder, criterion, epoch, logger, threshold 
 
             x, z, output, m = model(input_var)
             xc, zx, zy, yc = mi_encoder(x, z, target_var)
-
+            act_loss = (z ** 2).sum(1).mean()
             # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
             predict_loss = criterion(output, target_var)
             zx_loss = vector_loss(xc, zx, measure)
             zy_loss = scalar_loss(zy, yc, measure)
-            loss = predict_loss + alpha * zx_loss + beta * zy_loss
+            loss = predict_loss + alpha * zx_loss + beta * zy_loss + act_loss * L2
 
             y_true.extend(target_var.tolist())
             y_pre.extend(output.tolist())
@@ -204,6 +206,7 @@ def localize(loc_loader, model, mi_encoder, epoch, logger, threshold = 0.5):
                 printed = True
                 print(m[0])
                 np.savetxt("tensor.csv", m[0][0].detach().cpu().numpy(), delimiter=",")
+                np.savetxt("tensorz.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
                 for i in range(1):
                     torchvision.utils.save_image(normalize(m)[i][0], '/Users/LULU/MILNet/vis/' + str(par_set) + '_' + str(epoch) + '_' + str(name[i]))
                     # torchvision.utils.save_image(m[1][0], '/Users/LULU/MILNet/vis/' + str(par_set) + '_' + str(epoch) + '_' + str(name[1]))

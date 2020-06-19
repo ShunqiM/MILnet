@@ -43,34 +43,26 @@ class MILNet(nn.Module):
         self.norm = NopNet((2,3))
 
     def forward(self, x):
-        shape = x.shape[2:]
         low, feat = self.fe(x) # the output of this layer is preserved for local MI maximization and global MI minimization:I(z,x)
+        shape = low.shape[2:] # low.shape = 16,128,28,28
+        # shape = x.shape[2:]
+
         z = self.mask_generator(feat)
+
         # np.savetxt("tensorz.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
-        # z = normalize(self.norm(z))
-        # z = self.norm(z)
         # np.savetxt("tensorznorm.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
         # exit()
-        # z = normalize(z)
-        # z = F.relu(torch.sigmoid(z) - self.t)
-        # z = F.relu(normalize(F.log_softmax(z, 2) * (-1.0)) - self.t)
         m = F.interpolate(z, shape, mode = 'bicubic') # Is there a better mode for interpolate instead of bicubic?
         m1 = F.relu(torch.sigmoid(m) - self.t)
-        # m = torch.sigmoid(m) - self.t
-        # m = normalize(m)
-        # m = F.relu(m - self.t)
-        # m = m - self.t
-        x = x * m1 # NOTE be sure their shape matched here.
-        y = self.cnet(x)
+        # x = x * m1 # NOTE be sure their shape matched here.
+        # y = self.cnet(x)
+        low = low * m1
+        y = self.cnet(low)
+
         # y = self.cnet(x, m1)
 
         # threshold added
         # z = F.sigmoid(z) # z.shape = torch.Size([16, 1, 7, 7])
-        # b, c, h, w = z.shape
-        # z = z.view(b, c, -1)
-        # z = F.softmax(z, dim = 2)
-        # z = z.view(b, c, h, w)
-
         # tmp = torch.zeros(z.shape)
         # z = torch.where(z >= self.zt, z, tmp)
 
@@ -114,6 +106,7 @@ class XEncoder(ResNet):
         super(XEncoder, self).__init__(BasicBlock, [2, 2, 2, 2], num_classes=1, zero_init_residual=True)
         self.in_channels = in_channel
         # self.channel_merger = conv1x1(512, compress)
+        # z = torch.mean(feat, dim=1, keepdim=True)
         self.out_bn = nn.BatchNorm2d(compress)
         self.conv1 = nn.Conv2d(self.in_channels, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)

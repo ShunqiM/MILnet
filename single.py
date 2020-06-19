@@ -83,8 +83,11 @@ def run():
         num_workers=8)
 
     fe = get_feature_extractor()
-    classifier = models.resnet50(pretrained=True)
-    classifier.fc = nn.Linear(fe.get_channel_num(), 1)
+    # classifier = models.resnet50(pretrained=True)
+    classifier = models.resnet50(num_classes = 1, zero_init_residual=True)
+    classifier.conv1 = nn.Conv2d(128, 64, kernel_size=7, stride=2, padding=3,
+                               bias=False)
+    # classifier.fc = nn.Linear(fe.get_channel_num(), 1)
     # classifier = get_classifier(fe.get_channel_num())
     model = MILNet(fe, classifier, t = network_threshold, zt = zt)
     mi_encoder = MIEncoder(7, 7, model.fe.get_local_channel_num(), mi_units, x_units, Lambda, Compress)
@@ -134,13 +137,13 @@ def run():
             logger.log_value('learning_rate', lr, epoch)
 
         ep = epoch
-        # training(dataloaders['train'], model, mi_encoder, criterion, optimizer, mi_opt, epoch, logger, alpha, beta)
+        training(dataloaders['train'], model, mi_encoder, criterion, optimizer, mi_opt, epoch, logger, alpha, beta)
 
-        # new_auc, new_loss = validate(dataloaders['val'], model, mi_encoder, criterion, epoch, logger, THRESHOLD)
+        new_auc, new_loss = validate(dataloaders['val'], model, mi_encoder, criterion, epoch, logger, THRESHOLD)
         iop, fpr, fnr = localize(dataloaders['loc'], model, mi_encoder, epoch, logger, THRESHOLD)
-        exit()
+        # exit()
         scheduler.step(new_loss)
-        mi_encoder.update_GRL(0.05)
+        mi_encoder.update_GRL(0.1)
         logger.log_value('lambda', mi_encoder.grl.Lambda, epoch)
         best_auc = max(new_auc, best_auc)
         # remember best prec@1 and save checkpoint

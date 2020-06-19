@@ -13,7 +13,8 @@ import numpy as np
 
 class FeatureExtrator(ResNet):
     def __init__(self):
-        super(FeatureExtrator, self).__init__(Bottleneck, [3, 4, 6, 3])
+        # super(FeatureExtrator, self).__init__(Bottleneck, [3, 4, 6, 3])
+        super(FeatureExtrator, self).__init__(BasicBlock, [3, 4, 6, 3])
         # self.drop = nn.Dropout2d(p = 0.2)
 
     def forward(self, x):
@@ -39,14 +40,16 @@ class FeatureExtrator(ResNet):
         return low.detach(), x
 
     def get_channel_num(self):
-        return 512 * Bottleneck.expansion
+        # return 512 *Bottleneck.expansion
+        return 512 *BasicBlock.expansion
 
     def get_local_channel_num(self):
         return self.layer3[0].conv1.in_channels
 
 def get_feature_extractor():
     model = FeatureExtrator()
-    model.load_state_dict(models.resnet50(pretrained=True).state_dict())
+    # model.load_state_dict(models.resnet50(pretrained=True).state_dict())
+    model.load_state_dict(models.resnet34(pretrained=True).state_dict())
     return model
 
 
@@ -68,7 +71,7 @@ class RevGrad(Function):
         return output
 
     @staticmethod
-    def backward(ctx, grad_output):  # pragma: no cover
+    def backward(ctx, grad_output):
         grad_input = None
         if ctx.needs_input_grad[0]:
             grad_input = -grad_output

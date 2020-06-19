@@ -60,8 +60,10 @@ class MILNet(nn.Module):
         # m = normalize(m)
         # m = F.relu(m - self.t)
         # m = m - self.t
-        # x = x * m1 # NOTE be sure their shape matched here.
-        y = self.cnet(x, m1)
+        x = x * m1 # NOTE be sure their shape matched here.
+        y = self.cnet(x)
+        # y = self.cnet(x, m1)
+
         # threshold added
         # z = F.sigmoid(z) # z.shape = torch.Size([16, 1, 7, 7])
         # b, c, h, w = z.shape
@@ -172,7 +174,7 @@ class Classifier(ResNet):
         m = self.avgpool(m)
 
         x = self.avgpool(x)
-        x = x + m
+        x = (x + m)/2
         x = torch.flatten(x, 1)
         x = self.fc(x)
 

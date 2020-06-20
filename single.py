@@ -83,10 +83,15 @@ def run():
         num_workers=8)
 
     fe = get_feature_extractor()
+    # classifier = models.resnet50(num_classes = 1, zero_init_residual=True)
+    # classifier.conv1 = nn.Conv2d(64, 64, kernel_size=7, stride=2, padding=3,
+    #                            bias=False)
+    classifier = models.resnet50(pretrained=True)
+    print(classifier.fc.in_features)
+    classifier.fc = nn.Linear(classifier.fc.in_features, 1)
+    # classifier.conv1 = nn.Sequential()
+
     # classifier = models.resnet50(pretrained=True)
-    classifier = models.resnet50(num_classes = 1, zero_init_residual=True)
-    classifier.conv1 = nn.Conv2d(128, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
     # classifier.fc = nn.Linear(fe.get_channel_num(), 1)
     # classifier = get_classifier(fe.get_channel_num())
     model = MILNet(fe, classifier, t = network_threshold, zt = zt)
@@ -125,7 +130,7 @@ def run():
 
     if load_model:
         model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(
-                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\e3_a_epoch2")
+                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\f2_epoch0")
         adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
         mi_encoder.grl.Lambda = 0.15
         print(mi_encoder.grl.Lambda)

@@ -25,12 +25,12 @@ class FeatureExtrator(ResNet):
 
         x = self.layer1(x)
 
+        # low level features for MI computation
+        low = x
 
         # x = self.drop(x)
         x = self.layer2(x)
 
-        # low level features for MI computation
-        low = x
 
         # x = self.drop(x)
         x = self.layer3(x)
@@ -44,7 +44,7 @@ class FeatureExtrator(ResNet):
         return 512 *BasicBlock.expansion
 
     def get_local_channel_num(self):
-        return self.layer3[0].conv1.in_channels
+        return self.layer2[0].conv1.in_channels
 
 def get_feature_extractor():
     model = FeatureExtrator()

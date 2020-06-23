@@ -130,9 +130,9 @@ def run():
 
     if load_model:
         model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(
-                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\f2_epoch0")
-        adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
-        mi_encoder.grl.Lambda = 0.15
+                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\g5_epoch4")
+        # adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
+        mi_encoder.grl.Lambda = 0.7
         print(mi_encoder.grl.Lambda)
         model = model.cuda()
 
@@ -168,8 +168,8 @@ def run():
 
 
 if __name__ == '__main__':
-    np.random.seed(1)
-    torch.manual_seed(3)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    # np.random.seed(1)
+    # torch.manual_seed(3)
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
     run()

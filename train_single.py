@@ -19,18 +19,18 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "f7"
+par_set = "g5"
 alpha = 1
-beta = 3
+beta = 1
 THRESHOLD = 0.8
-network_threshold = 0.1
+network_threshold = 0.2
 mi_units = 64
 x_units = 64
 load_model = False
 size = 224
 lr = 0.01
 mi_lr = 0.01
-Lambda = 0.1
+Lambda = 0.2
 L2 = 1e-4
 zt = 0
 Compress = 1

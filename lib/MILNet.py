@@ -71,8 +71,8 @@ class MILNet(nn.Module):
 class MIEncoder(nn.Module):
     def __init__(self, h, w, in_channel, mi_units = 64, x_units = 32, Lambda = 1, compress = 1):
         super(MIEncoder, self).__init__()
-        # self.Xnet = XEncoder(x_units, in_channel, compress)
-        self.Xnet = LinearXEncoder(x_units, 7)
+        self.Xnet = XEncoder(x_units, in_channel, compress)
+        # self.Xnet = LinearXEncoder(x_units, 7)
         self.Zlayer = LinearSeq(h * w, mi_units)
         self.ZXlayer_1 = LinearSeq(mi_units, int(mi_units)) # NOTE Can MI be minimized??
         self.ZXlayer_2 = LinearSeq(int(mi_units), x_units)
@@ -99,6 +99,8 @@ class MIEncoder(nn.Module):
         return x, zx, zy, y
 
     def update_GRL(self, delta):
+        if GRL.Lambda >= 1:
+            return
         GRL.Lambda += delta
         self.grad_reverse = self.grl.apply
 
@@ -107,17 +109,17 @@ class XEncoder(ResNet):
     def __init__(self, mi_units, in_channel, compress, img_size = 224):
         super(XEncoder, self).__init__(BasicBlock, [2, 2, 2, 2], num_classes=1, zero_init_residual=True)
         self.in_channels = in_channel
-        self.in_channels = 1
-        # self.channel_merger = conv1x1(512, compress)
+        # self.in_channels = 1
+        self.channel_merger = conv1x1(512, compress)
         # z = torch.mean(feat, dim=1, keepdim=True)
-        # self.out_bn = nn.BatchNorm2d(compress)
+        self.out_bn = nn.BatchNorm2d(compress)
         self.conv1 = nn.Conv2d(self.in_channels, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
-        # h, w = self.get_flattened_units(img_size)[2:]
-        # self.Xnet_1 = LinearSeq(h * w * compress, mi_units)
-        # self.Xnet_2 = LinearSeq(mi_units, mi_units)
-        # self.Xnet_3 = LinearSeq(mi_units, mi_units)
-        self.Xnet = MI1x1ConvNet(512, mi_units)
+        h, w = self.get_flattened_units(img_size)[2:]
+        self.Xnet_1 = LinearSeq(h * w * compress, mi_units)
+        self.Xnet_2 = LinearSeq(mi_units, mi_units)
+        self.Xnet_3 = LinearSeq(mi_units, mi_units)
+        # self.Xnet = MI1x1ConvNet(512, mi_units)
 
     def conv_forward(self, x):
         x = self.conv1(x)
@@ -135,10 +137,10 @@ class XEncoder(ResNet):
         # x = torch.mean(x, dim=1, keepdim=True)
         x = self.conv_forward(x)
         # x = torch.mean(x, dim=1, keepdim=True)
-        x = self.Xnet(x)
-        # x = F.relu(self.out_bn(self.channel_merger(x)))
+        # x = self.Xnet(x)
+        x = F.relu(self.out_bn(self.channel_merger(x)))
         x = torch.flatten(x, 1)
-        # x = self.Xnet_3(self.Xnet_2(self.Xnet_1(x)))
+        x = self.Xnet_3(self.Xnet_2(self.Xnet_1(x)))
         return x
 
     def get_flattened_units(self, img_size):

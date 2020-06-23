@@ -53,11 +53,9 @@ class MILNet(nn.Module):
         # np.savetxt("tensorznorm.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
         # exit()
         m = F.interpolate(z, shape, mode = 'bicubic') # Is there a better mode for interpolate instead of bicubic?
-        m1 = F.relu(torch.sigmoid(m) - self.t)
-        # x = x * m1 # NOTE be sure their shape matched here.
-        # y = self.cnet(x)
-        x = x * m1 + x
-        y = self.cnet(x)
+        # m1 = F.relu(torch.sigmoid(m) - self.t)
+        # x = x * m1 + x # NOTE be sure their shape matched here.
+        y = self.cnet(x, z)
 
         # y = self.cnet(x, m1)
 
@@ -178,16 +176,18 @@ class Classifier(ResNet):
 
         x = self.layer1(x)
         x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+
         shape = x.shape[2:]
         # m = m.view(b, m.size(2), m.size(3))
         m = F.interpolate(m, shape, mode = 'bicubic')
-        m = x * m
-        m = self.avgpool(m)
+        m = F.relu(torch.sigmoid(m) - self.t)
+        x = x * m + x
+
+        x = self.layer3(x)
+        x = self.layer4(x)
+
 
         x = self.avgpool(x)
-        x = (x + m)/2
         x = torch.flatten(x, 1)
         x = self.fc(x)
 

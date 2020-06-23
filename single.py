@@ -86,14 +86,16 @@ def run():
     # classifier = models.resnet50(num_classes = 1, zero_init_residual=True)
     # classifier.conv1 = nn.Conv2d(64, 64, kernel_size=7, stride=2, padding=3,
     #                            bias=False)
-    classifier = models.resnet50(pretrained=True)
-    print(classifier.fc.in_features)
-    classifier.fc = nn.Linear(classifier.fc.in_features, 1)
+
+    # classifier = models.resnet50(pretrained=True)
+    # print(classifier.fc.in_features)
+    # classifier.fc = nn.Linear(classifier.fc.in_features, 1)
+
     # classifier.conv1 = nn.Sequential()
 
     # classifier = models.resnet50(pretrained=True)
     # classifier.fc = nn.Linear(fe.get_channel_num(), 1)
-    # classifier = get_classifier(fe.get_channel_num())
+    classifier = get_classifier(classifier.fc.in_features)
     model = MILNet(fe, classifier, t = network_threshold, zt = zt)
     mi_encoder = MIEncoder(7, 7, model.fe.get_local_channel_num(), mi_units, x_units, Lambda, Compress)
 

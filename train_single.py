@@ -19,7 +19,7 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "g5"
+par_set = "g6"
 alpha = 1
 beta = 1
 THRESHOLD = 0.8

@@ -19,14 +19,14 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "g6"
+par_set = "test"
 alpha = 1
 beta = 1
-THRESHOLD = 0.8
-network_threshold = 0.2
+THRESHOLD = 0.9
+network_threshold = 0.3
 mi_units = 64
 x_units = 64
-load_model = False
+load_model = True
 size = 224
 lr = 0.01
 mi_lr = 0.01

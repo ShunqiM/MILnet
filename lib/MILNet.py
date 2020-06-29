@@ -22,6 +22,7 @@ class LinearSeq(nn.Module):
         # self.drop = nn.Dropout(drop_rate)
         self.linear = nn.Linear(in_units, out_units)
         self.norm = nn.BatchNorm1d(out_units)
+        # self.norm = nn.LayerNorm(out_units)
         self.relu = nn.ReLU()
 
     def forward(self, x):
@@ -55,7 +56,7 @@ class MILNet(nn.Module):
         m = F.interpolate(z, shape, mode = 'bicubic') # Is there a better mode for interpolate instead of bicubic?
         # m1 = F.relu(torch.sigmoid(m) - self.t)
         # x = x * m1 + x # NOTE be sure their shape matched here.
-        y = self.cnet(x, z)
+        y = self.cnet(x, z, self.t)
 
         # y = self.cnet(x, m1)
 
@@ -168,7 +169,7 @@ class Classifier(ResNet):
     def __init__(self):
         super(Classifier, self).__init__(Bottleneck, [3, 4, 6, 3])
 
-    def forward(self, x, m):
+    def forward(self, x, m, t):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -180,7 +181,7 @@ class Classifier(ResNet):
         shape = x.shape[2:]
         # m = m.view(b, m.size(2), m.size(3))
         m = F.interpolate(m, shape, mode = 'bicubic')
-        m = F.relu(torch.sigmoid(m) - self.t)
+        m = F.relu(torch.sigmoid(m) - t)
         x = x * m + x
 
         x = self.layer3(x)
@@ -196,5 +197,5 @@ class Classifier(ResNet):
 def get_classifier(channel):
     model = Classifier()
     model.load_state_dict(models.resnet50(pretrained=True).state_dict())
-    model.fc = nn.Linear(channel, 1)
+    model.fc = nn.Linear(model.fc.in_features, 1)
     return model

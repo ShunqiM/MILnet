@@ -95,6 +95,23 @@ class GRL(Function):
     def set_lambda(self, L):
         GRL.Lambda = L
 
+class GradientMultiplier(Function):
+    Lambda = 1
+    def __init__(self, L):
+        super(GradientMultiplier, self).__init__()
+        GradientMultiplier.Lambda = L
+    @staticmethod
+    def forward(self, x):
+        return x.view_as(x)
+    @staticmethod
+    def backward(self, grad_output):
+        grad_input = grad_output.clone()
+        # return grad_input*(-0.5)
+        # print(GRL.Lambda)
+        return grad_input*(GradientMultiplier.Lambda)
+    def set_lambda(self, L):
+        GradientMultiplier.Lambda = L
+
 
 class GaussianNoise(nn.Module):
     """Gaussian noise regularizer."""

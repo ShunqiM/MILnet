@@ -8,7 +8,7 @@ import torch.utils.data
 from torch.autograd import Variable
 from torchvision.models.resnet import conv1x1, resnet18, ResNet, BasicBlock, Bottleneck
 from lib.mi_networks import *
-from lib.utils import grad_reverse, GRL, normalize_, normalize, from_01
+from lib.utils import grad_reverse, GRL, normalize_, normalize, from_01, GradientMultiplier
 
 # TODO
 # Concate / Add the orignal X together with the masked X to improve performance
@@ -68,7 +68,7 @@ class MILNet(nn.Module):
         return low, z, y, m
 
 class MIEncoder(nn.Module):
-    def __init__(self, h, w, in_channel, mi_units = 64, x_units = 32, Lambda = 1, compress = 1):
+    def __init__(self, h, w, in_channel, mi_units = 64, x_units = 32, Lambda = 1, compress = 1, y_weight = 0.1):
         super(MIEncoder, self).__init__()
         self.Xnet = XEncoder(x_units, in_channel, compress)
         # self.Xnet = LinearXEncoder(x_units, 7)
@@ -82,6 +82,8 @@ class MIEncoder(nn.Module):
         # self.grad_reverse = grad_reverse
         self.grl = GRL(Lambda)
         self.grad_reverse = self.grl.apply
+        # self.gml = GradientMultiplier(y_weight)
+        # self.grad_multi = self.gml.apply
 
     """ GRL is still needed to avoid two complete backward (the second backward is only on mi_net now) """
     def forward(self, x, z, y):
@@ -91,16 +93,22 @@ class MIEncoder(nn.Module):
         z = z.view(N, -1)
         x = self.Xnet(x)
         z = self.Zlayer(z)
+
+        # zy = self.ZYlayer_2(self.ZYlayer_1(self.grad_multi(z)))
         zy = self.ZYlayer_2(self.ZYlayer_1(z))
         zx = self.ZXlayer_2(self.ZXlayer_1(self.grad_reverse(z)))
         y = y.unsqueeze(1)
+
         y = self.Ynet_2(self.Ynet_1(y))
+        # y = y - 0.5
+        # print(y)
         return x, zx, zy, y
 
     def update_GRL(self, delta):
         if GRL.Lambda >= 1:
             return
-        GRL.Lambda += delta
+        # GRL.Lambda += delta
+        self.grl.Lambda += delta
         self.grad_reverse = self.grl.apply
 
 """ An convolutional encoder that is able to preserve spatial properties """
@@ -138,6 +146,7 @@ class XEncoder(ResNet):
         # x = torch.mean(x, dim=1, keepdim=True)
         # x = self.Xnet(x)
         x = F.relu(self.out_bn(self.channel_merger(x)))
+        # x = F.relu((x))
         x = torch.flatten(x, 1)
         x = self.Xnet_3(self.Xnet_2(self.Xnet_1(x)))
         return x
@@ -169,7 +178,7 @@ class Classifier(ResNet):
     def __init__(self):
         super(Classifier, self).__init__(Bottleneck, [3, 4, 6, 3])
 
-    def forward(self, x, m, t):
+    def forward(self, x, z, t):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -180,7 +189,7 @@ class Classifier(ResNet):
 
         shape = x.shape[2:]
         # m = m.view(b, m.size(2), m.size(3))
-        m = F.interpolate(m, shape, mode = 'bicubic')
+        m = F.interpolate(z, shape, mode = 'bicubic')
         m = F.relu(torch.sigmoid(m) - t)
         x = x * m + x
 

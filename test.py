@@ -129,22 +129,25 @@ def run():
 # heatmap = torch.full((20, 20), 1).int()
 # heatmap[1,1] = 0
 # print(eval(bbox, heatmap, 20))
+grl = GradientMultiplier(3)
+x = torch.ones(2, 2, requires_grad=True)
+# x2 =
+y = torch.full((2, 2), 1, requires_grad=True)
+z = (x+y)*y*2
 
-# x = torch.ones(2, 2, requires_grad=True)
-# # x2 =
-# y = torch.full((2, 2), 1, requires_grad=True)
-# z = (x+y)*y*2
-# out = z.mean()
+z = grl.apply(z)
+
+out = z.mean()
 #
 # x.require_grad = False
 # out.backward(retain_graph = True)
 # print(x.grad)
 # print(y.grad)
 # x.require_grad = True
-# out.backward()
-# print(x.grad)
-# print(y.grad)
-
+out.backward()
+print(x.grad)
+print(y.grad)
+exit()
 # n = 3
 # a = torch.arange(n).unsqueeze(1) # [n, 1]
 # b = torch.ones(4).view(2, 2) # [2, 2]

@@ -14,7 +14,8 @@ import numpy as np
 class FeatureExtrator(ResNet):
     def __init__(self):
         # super(FeatureExtrator, self).__init__(Bottleneck, [3, 4, 6, 3])
-        super(FeatureExtrator, self).__init__(BasicBlock, [3, 4, 6, 3])
+        # super(FeatureExtrator, self).__init__(BasicBlock, [3, 4, 6, 3])
+        super(FeatureExtrator, self).__init__(BasicBlock, [2, 2, 2, 2])
         # self.drop = nn.Dropout2d(p = 0.2)
 
     def forward(self, x):
@@ -49,7 +50,7 @@ class FeatureExtrator(ResNet):
 def get_feature_extractor():
     model = FeatureExtrator()
     # model.load_state_dict(models.resnet50(pretrained=True).state_dict())
-    model.load_state_dict(models.resnet34(pretrained=True).state_dict())
+    model.load_state_dict(models.resnet18(pretrained=True).state_dict())
     return model
 
 

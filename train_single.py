@@ -19,9 +19,9 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "g32"
+par_set = "g44"
 alpha = 1
-beta = 1
+beta = 0.5
 THRESHOLD = 0.8
 network_threshold = 0.2
 mi_units = 64
@@ -32,7 +32,7 @@ lr = 0.01
 mi_lr = 0.01
 Lambda = 0.2
 L2 = 3e-5
-YWeight = 2
+YWeight = 0.1
 zt = 0
 Compress = 1
 bat = 16
@@ -53,11 +53,16 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
     mi_encoder.train()
     end = time.time()
     bat = train_loader.batch_size
+
+    # gml = GradientMultiplier(YWeight)
+    # grad_multi = gml.apply
+
     # seg_crit = nn.BCELoss()
     for i, (input, target, name, bboxes) in enumerate(BackgroundGenerator(train_loader)):
         target_var = target.float().cuda(non_blocking=True)
         input_var = input.cuda(non_blocking=True)
         x, z, output, m = model(input_var)
+        # xc, zx, zy, yc = mi_encoder(x, z, torch.sigmoid(grad_multi(output)))
         xc, zx, zy, yc = mi_encoder(x, z, target_var)
         # t = target_var.unsqueeze(1)
         # seg = torch.ones((m.size(2), m.size(3))).float()

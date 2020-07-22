@@ -154,7 +154,7 @@ class XEncoder(ResNet):
     def get_flattened_units(self, img_size):
         random = torch.randn(1, self.in_channels, 56, 56).float() # turn from 49 to 784
         # The out shape is b, 512, 14, 14
-        shape = self.conv_forward(random).shape
+        shape = self.conv_forward(random).data.shape
         print("X Shape: ", shape)
         return shape
 

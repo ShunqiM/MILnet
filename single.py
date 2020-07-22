@@ -12,6 +12,7 @@ from lib.utils import *
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from lib.MILNet import *
 from train_single import *
+from lib.fe_network import *
 
 
 def run():
@@ -82,7 +83,9 @@ def run():
         shuffle=True,
         num_workers=8)
 
-    fe = get_feature_extractor()
+    # fe = get_feature_extractor()
+    fe = FeNet(BasicBlock, [2, 2, 2, 2])
+
     # classifier = models.resnet50(num_classes = 1, zero_init_residual=True)
     # classifier.conv1 = nn.Conv2d(64, 64, kernel_size=7, stride=2, padding=3,
     #                            bias=False)
@@ -132,9 +135,9 @@ def run():
 
     if load_model:
         model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(
-                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\g30_epoch4")
+                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\g41_epoch3")
         # adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
-        mi_encoder.grl.Lambda = 0.45
+        mi_encoder.grl.Lambda = 0.4
         print(mi_encoder.grl.Lambda)
         model = model.cuda()
 
@@ -172,7 +175,7 @@ def run():
 
 if __name__ == '__main__':
     np.random.seed(1)
-    torch.manual_seed(3)
+    torch.manual_seed(2)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     run()

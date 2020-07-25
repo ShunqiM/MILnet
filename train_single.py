@@ -19,9 +19,9 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "g44"
+par_set = "g49"
 alpha = 1
-beta = 0.5
+beta = 1
 THRESHOLD = 0.8
 network_threshold = 0.2
 mi_units = 64

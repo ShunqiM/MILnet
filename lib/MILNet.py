@@ -65,7 +65,7 @@ class MILNet(nn.Module):
         # tmp = torch.zeros(z.shape)
         # z = torch.where(z >= self.zt, z, tmp)
 
-        return low, z, y, m
+        return x, z, y, m
 
 class MIEncoder(nn.Module):
     def __init__(self, h, w, in_channel, mi_units = 64, x_units = 32, Lambda = 1, compress = 1, y_weight = 0.1):
@@ -113,22 +113,45 @@ class MIEncoder(nn.Module):
 
 """ An convolutional encoder that is able to preserve spatial properties """
 class XEncoder(ResNet):
-    def __init__(self, mi_units, in_channel, compress, img_size = 224):
-        super(XEncoder, self).__init__(BasicBlock, [2, 2, 2, 2], num_classes=1, zero_init_residual=True)
+    def __init__(self, mi_units, in_channel, compress, img_size = 224, block = BasicBlock, layers =  [2, 2, 2, 2]):
+        super(XEncoder, self).__init__(BasicBlock, layers, num_classes=1, zero_init_residual=True)
         self.in_channels = in_channel
-        # self.in_channels = 1
-        self.channel_merger = conv1x1(512, compress)
+        self.in_channels = 3
+        self.channel_merger = conv1x1(64, compress)
         # z = torch.mean(feat, dim=1, keepdim=True)
         self.out_bn = nn.BatchNorm2d(compress)
-        self.conv1 = nn.Conv2d(self.in_channels, 64, kernel_size=3, stride=1, padding=1,
+        self.inplanes = 8
+        self.conv1 = nn.Conv2d(self.in_channels, self.inplanes, kernel_size=3, stride=1, padding=1,
                                bias=False)
+        self.bn1 = nn.BatchNorm2d(self.inplanes)
+        replace_stride_with_dilation = [False, False, False]
+        self.layer1 = self._make_layer(block, 8, layers[0])
+        self.layer2 = self._make_layer(block, 16, layers[1], stride=2,
+                                       dilate=replace_stride_with_dilation[0])
+        self.layer3 = self._make_layer(block, 32, layers[2], stride=2,
+                                       dilate=replace_stride_with_dilation[1])
+        self.layer4 = self._make_layer(block, 64, layers[3], stride=2,
+                                       dilate=replace_stride_with_dilation[2])
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        self.pol = nn.AdaptiveAvgPool2d((112, 112))
+
         h, w = self.get_flattened_units(img_size)[2:]
         self.Xnet_1 = LinearSeq(h * w * compress, mi_units)
         self.Xnet_2 = LinearSeq(mi_units, mi_units)
         self.Xnet_3 = LinearSeq(mi_units, mi_units)
         # self.Xnet = MI1x1ConvNet(512, mi_units)
 
+
     def conv_forward(self, x):
+        x = self.pol(x)
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -152,7 +175,8 @@ class XEncoder(ResNet):
         return x
 
     def get_flattened_units(self, img_size):
-        random = torch.randn(1, self.in_channels, 56, 56).float() # turn from 49 to 784
+        # random = torch.randn(1, self.in_channels, 56, 56).float() # turn from 49 to 784
+        random = torch.randn(1, self.in_channels, 224, 224).float() # turn from 49 to 784
         # The out shape is b, 512, 14, 14
         shape = self.conv_forward(random).data.shape
         print("X Shape: ", shape)

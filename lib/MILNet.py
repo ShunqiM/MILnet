@@ -36,7 +36,8 @@ class MILNet(nn.Module):
         self.mask_generator = conv1x1(feature_extractor.get_channel_num(), 1)
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                # nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.xavier_uniform_(m.weight, gain = 1)
         self.fe = feature_extractor
         self.cnet = classifier # classifier network: cannot use pretrained, maybe resnet18?
         self.t = t
@@ -65,7 +66,7 @@ class MILNet(nn.Module):
         # tmp = torch.zeros(z.shape)
         # z = torch.where(z >= self.zt, z, tmp)
 
-        return x, z, y, m
+        return low, z, y, m
 
 class MIEncoder(nn.Module):
     def __init__(self, h, w, in_channel, mi_units = 64, x_units = 32, Lambda = 1, compress = 1, y_weight = 0.1):
@@ -82,8 +83,8 @@ class MIEncoder(nn.Module):
         # self.grad_reverse = grad_reverse
         self.grl = GRL(Lambda)
         self.grad_reverse = self.grl.apply
-        # self.gml = GradientMultiplier(y_weight)
-        # self.grad_multi = self.gml.apply
+        self.gml = GradientMultiplier(y_weight)
+        self.grad_multi = self.gml.apply
 
     """ GRL is still needed to avoid two complete backward (the second backward is only on mi_net now) """
     def forward(self, x, z, y):
@@ -94,11 +95,10 @@ class MIEncoder(nn.Module):
         x = self.Xnet(x)
         z = self.Zlayer(z)
 
-        # zy = self.ZYlayer_2(self.ZYlayer_1(self.grad_multi(z)))
-        zy = self.ZYlayer_2(self.ZYlayer_1(z))
+        zy = self.ZYlayer_2(self.ZYlayer_1(self.grad_multi(z)))
+        # zy = self.ZYlayer_2(self.ZYlayer_1(z))
         zx = self.ZXlayer_2(self.ZXlayer_1(self.grad_reverse(z)))
         y = y.unsqueeze(1)
-
         y = self.Ynet_2(self.Ynet_1(y))
         # y = y - 0.5
         # print(y)
@@ -116,7 +116,7 @@ class XEncoder(ResNet):
     def __init__(self, mi_units, in_channel, compress, img_size = 224, block = BasicBlock, layers =  [2, 2, 2, 2]):
         super(XEncoder, self).__init__(BasicBlock, layers, num_classes=1, zero_init_residual=True)
         self.in_channels = in_channel
-        self.in_channels = 3
+        # self.in_channels = 3
         self.channel_merger = conv1x1(64, compress)
         # z = torch.mean(feat, dim=1, keepdim=True)
         self.out_bn = nn.BatchNorm2d(compress)
@@ -135,22 +135,24 @@ class XEncoder(ResNet):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                # nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.xavier_uniform_(m.weight, gain = 1)
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-        self.pol = nn.AdaptiveAvgPool2d((112, 112))
+        # self.pol = nn.AdaptiveAvgPool2d((112, 112))
 
         h, w = self.get_flattened_units(img_size)[2:]
         self.Xnet_1 = LinearSeq(h * w * compress, mi_units)
         self.Xnet_2 = LinearSeq(mi_units, mi_units)
+        # self.Xnet_3 = LinearSeq(mi_units, int(mi_units/2))
         self.Xnet_3 = LinearSeq(mi_units, mi_units)
         # self.Xnet = MI1x1ConvNet(512, mi_units)
 
 
     def conv_forward(self, x):
-        x = self.pol(x)
+        # x = self.pol(x)
 
         x = self.conv1(x)
         x = self.bn1(x)
@@ -175,8 +177,8 @@ class XEncoder(ResNet):
         return x
 
     def get_flattened_units(self, img_size):
-        # random = torch.randn(1, self.in_channels, 56, 56).float() # turn from 49 to 784
-        random = torch.randn(1, self.in_channels, 224, 224).float() # turn from 49 to 784
+        random = torch.randn(1, self.in_channels, 56, 56).float() # turn from 49 to 784
+        # random = torch.randn(1, self.in_channels, 224, 224).float() # turn from 49 to 784
         # The out shape is b, 512, 14, 14
         shape = self.conv_forward(random).data.shape
         print("X Shape: ", shape)

@@ -19,7 +19,7 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "g49"
+par_set = "g56"
 alpha = 1
 beta = 1
 THRESHOLD = 0.8
@@ -34,6 +34,7 @@ Lambda = 0.2
 L2 = 3e-5
 YWeight = 0.1
 zt = 0
+z_factor = 0.1
 Compress = 1
 bat = 16
 validate_log_freq = 1600/bat
@@ -71,15 +72,20 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
         # seg_label = torch.where(seg_label == 0, seg_label, m)
         # seg_loss = seg_crit(m, seg_label.detach())
 
+        # zloss = criterion(z.mean([2,3]), target_var)
+
         optimizer.zero_grad()
         # mi_opt.zero_grad()
         act_loss = (z ** 2).sum(1).mean()
         # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
         predict_loss = criterion(output, target_var)
         zx_nloss, zx_ploss = vector_loss(xc, zx, measure, True)
-        zy_loss = scalar_loss(zy, yc, measure)
+        # zy_loss = scalar_loss(zy, yc, measure)
+        zy_loss = criterion(zy, target_var)
+        # print(zy.shape)
+        # exit()
         """ zx_ploss is the disimilarity between z x and should be minimized in mi network """
-        loss = predict_loss - alpha * zx_ploss + beta * zy_loss + act_loss * L2
+        loss = predict_loss - alpha * zx_ploss + beta * zy_loss + act_loss * L2 # + zloss * z_factor
         # loss += seg_loss * 0.01
         loss.backward(retain_graph = True)
 

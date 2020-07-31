@@ -36,7 +36,8 @@ def multi_channel_loss_(l, m, measure):
     # Outer product, we want a N x N x n_local x n_multi tensor.
     u = torch.mm(m, l.t())
     u = u.reshape(N, n_multis, N, n_locals).permute(0, 2, 3, 1)
-
+    # print(u.shape)
+    # exit()
     # Since we have a big tensor with both positive and negative samples, we need to mask.
     mask = torch.eye(N).to(l.device)
     n_mask = 1 - mask

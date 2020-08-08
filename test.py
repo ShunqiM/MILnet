@@ -136,8 +136,10 @@ def run():
 # z = (x+y)*y*2
 #
 # z = grl.apply(z)
-z = torch.ones((16,1,14,14))
-out = z.mean([2,3])
+z = torch.ones((16,512,7,7))
+channel_merger = nn.ConvTranspose2d(512, 1, 7, 2, padding = 3)
+# out = z.mean([2,3])
+out = channel_merger(z)
 print(out.shape)
 exit()
 #

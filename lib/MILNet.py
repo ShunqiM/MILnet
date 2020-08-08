@@ -43,6 +43,8 @@ class MILNet(nn.Module):
         self.t = t
         self.zt = zt
         self.norm = NopNet((2,3))
+        # self.mi1 = MI1x1ConvNet(feature_extractor.get_channel_num(), int(feature_extractor.get_channel_num()/8))
+        # self.mi2 = MI1x1ConvNet(int(feature_extractor.get_channel_num()/8), 1)
 
     def forward(self, x):
         low, feat = self.fe(x) # the output of this layer is preserved for local MI maximization and global MI minimization:I(z,x)
@@ -50,6 +52,7 @@ class MILNet(nn.Module):
         shape = x.shape[2:]
 
         z = self.mask_generator(feat)
+        # z = self.mi2(self.mi1(feat))
 
         # np.savetxt("tensorz.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
         # np.savetxt("tensorznorm.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
@@ -203,8 +206,17 @@ class LinearXEncoder(nn.Module):
 class Classifier(ResNet):
     def __init__(self):
         super(Classifier, self).__init__(Bottleneck, [3, 4, 6, 3])
+            # self.trans = Bottleneck(129, 128, groups=self.groups,
+            #                         base_width=self.base_width, dilation=self.dilation,
+            #                         norm_layer=norm_layer)
 
     def forward(self, x, z, t):
+        shape = x.shape[2:]
+        # m = m.view(b, m.size(2), m.size(3))
+        m = F.interpolate(z, shape, mode = 'bicubic')
+        m = F.relu(torch.sigmoid(m) - t)
+        x = torch.cat((m, x), 1)
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -213,11 +225,11 @@ class Classifier(ResNet):
         x = self.layer1(x)
         x = self.layer2(x)
 
-        shape = x.shape[2:]
-        # m = m.view(b, m.size(2), m.size(3))
-        m = F.interpolate(z, shape, mode = 'bicubic')
-        m = F.relu(torch.sigmoid(m) - t)
-        x = x * m + x
+        # shape = x.shape[2:]
+        # # m = m.view(b, m.size(2), m.size(3))
+        # m = F.interpolate(z, shape, mode = 'bicubic')
+        # m = F.relu(torch.sigmoid(m) - t)
+        # x = x * m + x
 
         x = self.layer3(x)
         x = self.layer4(x)
@@ -233,4 +245,6 @@ def get_classifier(channel):
     model = Classifier()
     model.load_state_dict(models.resnet50(pretrained=True).state_dict())
     model.fc = nn.Linear(model.fc.in_features, 1)
+    model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3,
+                               bias=False)
     return model

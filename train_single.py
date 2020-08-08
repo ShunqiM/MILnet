@@ -19,7 +19,7 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "g56"
+par_set = "g70"
 alpha = 1
 beta = 1
 THRESHOLD = 0.8
@@ -34,7 +34,7 @@ Lambda = 0.2
 L2 = 3e-5
 YWeight = 0.1
 zt = 0
-z_factor = 0.1
+z_factor = 1
 Compress = 1
 bat = 16
 validate_log_freq = 1600/bat
@@ -63,8 +63,10 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
         target_var = target.float().cuda(non_blocking=True)
         input_var = input.cuda(non_blocking=True)
         x, z, output, m = model(input_var)
-        # xc, zx, zy, yc = mi_encoder(x, z, torch.sigmoid(grad_multi(output)))
-        xc, zx, zy, yc = mi_encoder(x, z, target_var)
+        # xc, zx, zy, yc = mi_encoder(x, z, (target_var + grad_multi(torch.sigmoid((output)))/2))
+        xc, zx, zy, yc = mi_encoder(x, z, (target_var + (torch.sigmoid((output)))/2).detach())
+        # xc, zx, zy, yc = mi_encoder(x, z, ((torch.sigmoid((output)))))
+        # xc, zx, zy, yc = mi_encoder(x, z, target_var)
         # t = target_var.unsqueeze(1)
         # seg = torch.ones((m.size(2), m.size(3))).float()
         # seg_label = target_var[:, :, None] * seg
@@ -80,8 +82,9 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
         # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
         predict_loss = criterion(output, target_var)
         zx_nloss, zx_ploss = vector_loss(xc, zx, measure, True)
-        # zy_loss = scalar_loss(zy, yc, measure)
-        zy_loss = criterion(zy, target_var)
+        zy_loss = scalar_loss(zy, yc, measure)
+        # zy_loss = criterion(zy, target_var)
+        # zy_loss = vector_loss(z, yc, measure, False)
         # print(zy.shape)
         # exit()
         """ zx_ploss is the disimilarity between z x and should be minimized in mi network """
@@ -149,12 +152,15 @@ def validate(val_loader, model, mi_encoder, criterion, epoch, logger, threshold 
             target_var = torch.autograd.Variable(target)
 
             x, z, output, m = model(input_var)
-            xc, zx, zy, yc = mi_encoder(x, z, target_var)
+            # xc, zx, zy, yc = mi_encoder(x, z, target_var)
+            xc, zx, zy, yc = mi_encoder(x, z, (target_var + (torch.sigmoid((output)))/2).detach())
+            # xc, zx, zy, yc = mi_encoder(x, z, ((torch.sigmoid((output)))))
             act_loss = (z ** 2).sum(1).mean()
             # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
             predict_loss = criterion(output, target_var)
             zx_loss = vector_loss(xc, zx, measure)
             zy_loss = scalar_loss(zy, yc, measure)
+            # zy_loss = criterion(zy, target_var)
             loss = predict_loss + alpha * zx_loss + beta * zy_loss + act_loss * L2
 
             y_true.extend(target_var.tolist())

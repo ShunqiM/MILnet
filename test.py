@@ -125,6 +125,16 @@ def run():
 # if __name__ == '__main__':
 #     run()
 
+x = torch.arange(16).view(2, 2, 2, 2)
+print(x)
+y = torch.flip(x, [3])
+print(y)
+a,b = y
+print(a)
+z = torch.cat((x, y), 0)
+print(z.shape)
+
+exit()
 # bbox = torch.tensor([0, 0, 10, 10])
 # heatmap = torch.full((20, 20), 1).int()
 # heatmap[1,1] = 0

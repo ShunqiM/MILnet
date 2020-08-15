@@ -211,11 +211,11 @@ class Classifier(ResNet):
             #                         norm_layer=norm_layer)
 
     def forward(self, x, z, t):
-        shape = x.shape[2:]
-        # m = m.view(b, m.size(2), m.size(3))
-        m = F.interpolate(z, shape, mode = 'bicubic')
-        m = F.relu(torch.sigmoid(m) - t)
-        x = torch.cat((m, x), 1)
+        # shape = x.shape[2:]
+        # # m = m.view(b, m.size(2), m.size(3))
+        # m = F.interpolate(z, shape, mode = 'bicubic')
+        # m = F.relu(torch.sigmoid(m) - t)
+        # x = torch.cat((m, x), 1)
 
         x = self.conv1(x)
         x = self.bn1(x)
@@ -225,11 +225,11 @@ class Classifier(ResNet):
         x = self.layer1(x)
         x = self.layer2(x)
 
-        # shape = x.shape[2:]
-        # # m = m.view(b, m.size(2), m.size(3))
-        # m = F.interpolate(z, shape, mode = 'bicubic')
-        # m = F.relu(torch.sigmoid(m) - t)
-        # x = x * m + x
+        shape = x.shape[2:]
+        # m = m.view(b, m.size(2), m.size(3))
+        m = F.interpolate(z, shape, mode = 'bicubic')
+        m = F.relu(torch.sigmoid(m) - t)
+        x = x * m + x
 
         x = self.layer3(x)
         x = self.layer4(x)
@@ -245,6 +245,6 @@ def get_classifier(channel):
     model = Classifier()
     model.load_state_dict(models.resnet50(pretrained=True).state_dict())
     model.fc = nn.Linear(model.fc.in_features, 1)
-    model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+    # model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3,
+    #                            bias=False)
     return model

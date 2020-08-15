@@ -19,9 +19,10 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "g70"
+par_set = "h5"
 alpha = 1
 beta = 1
+gamma = 0.01
 THRESHOLD = 0.8
 network_threshold = 0.2
 mi_units = 64
@@ -50,6 +51,7 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
     predict_losses = AverageMeter()
     zx_losses = AverageMeter()
     zy_losses = AverageMeter()
+    consistency_losses = AverageMeter()
     model.train()
     mi_encoder.train()
     end = time.time()
@@ -62,34 +64,37 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
     for i, (input, target, name, bboxes) in enumerate(BackgroundGenerator(train_loader)):
         target_var = target.float().cuda(non_blocking=True)
         input_var = input.cuda(non_blocking=True)
-        x, z, output, m = model(input_var)
-        # xc, zx, zy, yc = mi_encoder(x, z, (target_var + grad_multi(torch.sigmoid((output)))/2))
-        xc, zx, zy, yc = mi_encoder(x, z, (target_var + (torch.sigmoid((output)))/2).detach())
-        # xc, zx, zy, yc = mi_encoder(x, z, ((torch.sigmoid((output)))))
-        # xc, zx, zy, yc = mi_encoder(x, z, target_var)
-        # t = target_var.unsqueeze(1)
-        # seg = torch.ones((m.size(2), m.size(3))).float()
-        # seg_label = target_var[:, :, None] * seg
-        # seg_label = seg_label.view(target_var.size(0), 1, m.size(2), m.size(3))
-        # seg_label = torch.where(seg_label == 0, seg_label, m)
-        # seg_loss = seg_crit(m, seg_label.detach())
 
-        # zloss = criterion(z.mean([2,3]), target_var)
+        # flip and concat the input
+        x_ = torch.flip(input_var, [3])
+        x_in = torch.cat((input_var, x_), 0)
+        target_var = torch.cat((target_var, target_var), 0)
+
+
+        x, z, output, m = model(x_in)
+
+        # xc, zx, zy, yc = mi_encoder(x, z, (target_var + grad_multi(torch.sigmoid((output)))/2))
+        # xc, zx, zy, yc = mi_encoder(x, z, (target_var + (torch.sigmoid((output)))/2).detach())
+        # xc, zx, zy, yc = mi_encoder(x, z, ((torch.sigmoid((output)))))
+        xc, zx, zy, yc = mi_encoder(x, z, target_var)
+
+        # Attention Consistency Loss
+        z1, z2 = torch.split(z, input.size(0))
+        z_ = torch.flip(z2, [3])
+        consistency_loss = F.mse_loss(z1, z_)
+
 
         optimizer.zero_grad()
-        # mi_opt.zero_grad()
         act_loss = (z ** 2).sum(1).mean()
         # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
         predict_loss = criterion(output, target_var)
         zx_nloss, zx_ploss = vector_loss(xc, zx, measure, True)
-        zy_loss = scalar_loss(zy, yc, measure)
-        # zy_loss = criterion(zy, target_var)
+        # zy_loss = scalar_loss(zy, yc, measure)
+        zy_loss = criterion(zy, target_var)
         # zy_loss = vector_loss(z, yc, measure, False)
         # print(zy.shape)
-        # exit()
         """ zx_ploss is the disimilarity between z x and should be minimized in mi network """
-        loss = predict_loss - alpha * zx_ploss + beta * zy_loss + act_loss * L2 # + zloss * z_factor
-        # loss += seg_loss * 0.01
+        loss = predict_loss - alpha * zx_ploss + beta * zy_loss + act_loss * L2 + gamma * consistency_loss
         loss.backward(retain_graph = True)
 
         """ Step does not need model to be unfreezed, backward does """
@@ -99,6 +104,7 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
         unfreeze_network(model)
         optimizer.step()
 
+        consistency_losses.update(consistency_loss.data, input.size(0))
         losses.update(loss.data + neg_loss.data, input.size(0))
         predict_losses.update(predict_loss.data, input.size(0))
         zx_losses.update(zx_nloss.data - zx_ploss.data, input.size(0))
@@ -113,14 +119,16 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'PLoss {ploss.val:.4f} ({ploss.avg:.4f})\t'
                   'XLoss {xloss.val:.4f} ({xloss.avg:.4f})\t'
-                  'YLoss {yloss.val:.4f} ({yloss.avg:.4f})\t'.format(
+                  'YLoss {yloss.val:.4f} ({yloss.avg:.4f})\t'
+                  'Consistency {closs.val:.4f} ({closs.avg:.4f})\t'.format(
                       epoch, i, len(train_loader), batch_time=batch_time,
-                      loss=losses, ploss = predict_losses, xloss = zx_losses, yloss = zy_losses))
+                      loss=losses, ploss = predict_losses, xloss = zx_losses, yloss = zy_losses, closs = consistency_losses))
         if i % log_freq == 0 and i != 0:
             logger.log_value('train_loss', losses.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
             logger.log_value('train_ploss', predict_losses.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
             logger.log_value('train_xloss', zx_losses.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
             logger.log_value('train_yloss', zy_losses.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
+            logger.log_value('consistency_loss', consistency_losses.avg, int(epoch*len(train_loader)*bat/16)+int(i*bat/16))
     return losses.avg
 
 
@@ -159,8 +167,8 @@ def validate(val_loader, model, mi_encoder, criterion, epoch, logger, threshold 
             # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
             predict_loss = criterion(output, target_var)
             zx_loss = vector_loss(xc, zx, measure)
-            zy_loss = scalar_loss(zy, yc, measure)
-            # zy_loss = criterion(zy, target_var)
+            # zy_loss = scalar_loss(zy, yc, measure)
+            zy_loss = criterion(zy, target_var)
             loss = predict_loss + alpha * zx_loss + beta * zy_loss + act_loss * L2
 
             y_true.extend(target_var.tolist())

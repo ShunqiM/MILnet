@@ -69,7 +69,8 @@ def run():
     dataloaders = {}
     dataloaders['train'] = torch.utils.data.DataLoader(
         transformed_datasets['train'],
-        batch_size=bat//2,
+        # batch_size=bat//2,
+        batch_size=bat,
         shuffle=True,
         num_workers=8) # best number
     dataloaders['val'] = torch.utils.data.DataLoader(
@@ -135,9 +136,9 @@ def run():
 
     if load_model:
         model, mi_encoder, optimizer, start_epoch, best_auc, scheduler = load_checkpoint(
-                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\h3_epoch6")
+                        model, mi_encoder, optimizer, scheduler, None, "D:\\X\\2019S2\\3912\\MILN_models\\h6_epoch5")
         # adjust_learning_rate_(optimizer, start_epoch, logger, par_set)
-        mi_encoder.grl.Lambda = 0.55
+        mi_encoder.grl.Lambda = 0.35
         print(mi_encoder.grl.Lambda)
         model = model.cuda()
 
@@ -151,7 +152,7 @@ def run():
 
         new_auc, new_loss = validate(dataloaders['val'], model, mi_encoder, criterion, epoch, logger, THRESHOLD)
         iop, fpr, fnr = localize(dataloaders['loc'], model, mi_encoder, epoch, logger, THRESHOLD)
-        # exit()
+        exit()
         scheduler.step(new_loss)
         mi_encoder.update_GRL(0.05)
         logger.log_value('lambda', mi_encoder.grl.Lambda, epoch)
@@ -174,8 +175,8 @@ def run():
 
 
 if __name__ == '__main__':
-    np.random.seed(1)
-    torch.manual_seed(2)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    # np.random.seed(1)
+    # torch.manual_seed(2)
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
     run()

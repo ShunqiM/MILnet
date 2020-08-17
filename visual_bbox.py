@@ -1,7 +1,7 @@
 import pandas as pd
 import torch
 import torchvision
-img_name = '00013993_083.png'
+img_name = '00020113_030.png'
 df = pd.read_csv("D:\\X\\2019S2\\3912\\CXR8\\BBox_List_2017.csv")
 box = df.loc[df['Image Index'] == img_name].values[0]
 box = box[2:6].astype(int)

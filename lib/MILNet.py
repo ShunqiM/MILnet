@@ -46,30 +46,31 @@ class MILNet(nn.Module):
         # self.mi1 = MI1x1ConvNet(feature_extractor.get_channel_num(), int(feature_extractor.get_channel_num()/8))
         # self.mi2 = MI1x1ConvNet(int(feature_extractor.get_channel_num()/8), 1)
 
-    def forward(self, x):
-        low, feat = self.fe(x) # the output of this layer is preserved for local MI maximization and global MI minimization:I(z,x)
-        # shape = low.shape[2:] # low.shape = 16,128,28,28
-        shape = x.shape[2:]
+    def forward(self, x, flip = False):
+        if flip:
+            x_ = torch.flip(x, [3])
+            x_in = torch.cat((x, x_), 0)
+            low, feat = self.fe(x_in)
+            shape = x.shape[2:]
+            z = self.mask_generator(feat)
+            z, z_ = torch.split(z, x.size(0))
+            z_ = torch.flip(z_, [3])
+            m = F.interpolate(z, shape, mode = 'bicubic')
+            y = self.cnet(x, z, self.t)
+            return low, z, z_, y, m
+        else:
+            low, feat = self.fe(x) # the output of this layer is preserved for local MI maximization and global MI minimization:I(z,x)
+            # shape = low.shape[2:] # low.shape = 16,128,28,28
+            shape = x.shape[2:]
 
-        z = self.mask_generator(feat)
-        # z = self.mi2(self.mi1(feat))
+            z = self.mask_generator(feat)
 
-        # np.savetxt("tensorz.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
-        # np.savetxt("tensorznorm.csv", z[0][0].detach().cpu().numpy(), delimiter=",")
-        # exit()
-        m = F.interpolate(z, shape, mode = 'bicubic') # Is there a better mode for interpolate instead of bicubic?
-        # m1 = F.relu(torch.sigmoid(m) - self.t)
-        # x = x * m1 + x # NOTE be sure their shape matched here.
-        y = self.cnet(x, z, self.t)
+            m = F.interpolate(z, shape, mode = 'bicubic') # Is there a better mode for interpolate instead of bicubic?
+            # m1 = F.relu(torch.sigmoid(m) - self.t)
+            y = self.cnet(x, z, self.t)
+            # y = self.cnet(x, m1)
 
-        # y = self.cnet(x, m1)
-
-        # threshold added
-        # z = F.sigmoid(z) # z.shape = torch.Size([16, 1, 7, 7])
-        # tmp = torch.zeros(z.shape)
-        # z = torch.where(z >= self.zt, z, tmp)
-
-        return low, z, y, m
+            return low, z, y, m
 
 class MIEncoder(nn.Module):
     def __init__(self, h, w, in_channel, mi_units = 64, x_units = 32, Lambda = 1, compress = 1, y_weight = 0.1):

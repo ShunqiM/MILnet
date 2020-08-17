@@ -19,10 +19,10 @@ from lib.mi_loss import *
 from lib.utils import *
 from lib.evaluation_funtions import *
 
-par_set = "h5"
+par_set = "h7"
 alpha = 1
 beta = 1
-gamma = 0.01
+gamma = 0.05
 THRESHOLD = 0.8
 network_threshold = 0.2
 mi_units = 64
@@ -68,24 +68,32 @@ def training(train_loader, model, mi_encoder, criterion, optimizer, mi_opt, epoc
         # flip and concat the input
         x_ = torch.flip(input_var, [3])
         x_in = torch.cat((input_var, x_), 0)
-        target_var = torch.cat((target_var, target_var), 0)
+        # target_var = torch.cat((target_var, target_var), 0)
 
 
         x, z, output, m = model(x_in)
 
-        # xc, zx, zy, yc = mi_encoder(x, z, (target_var + grad_multi(torch.sigmoid((output)))/2))
-        # xc, zx, zy, yc = mi_encoder(x, z, (target_var + (torch.sigmoid((output)))/2).detach())
-        # xc, zx, zy, yc = mi_encoder(x, z, ((torch.sigmoid((output)))))
-        xc, zx, zy, yc = mi_encoder(x, z, target_var)
-
         # Attention Consistency Loss
         z1, z2 = torch.split(z, input.size(0))
         z_ = torch.flip(z2, [3])
+        # x, z1, z_, output, m = model(x_in)
         consistency_loss = F.mse_loss(z1, z_)
+
+        # xc, zx, zy, yc = mi_encoder(x, z, (target_var + grad_multi(torch.sigmoid((output)))/2))
+        # xc, zx, zy, yc = mi_encoder(x, z, (target_var + (torch.sigmoid((output)))/2).detach())
+        # xc, zx, zy, yc = mi_encoder(x, z, ((torch.sigmoid((output)))))
+        x1, x2 = torch.split(x, input.size(0))
+        output, _ = torch.split(output, input.size(0))
+        xc, zx, zy, yc = mi_encoder(x1, z1, target_var)
+        # xc, zx, zy, yc = mi_encoder(x, z, target_var)
+
+
 
 
         optimizer.zero_grad()
-        act_loss = (z ** 2).sum(1).mean()
+
+        act_loss = (z1 ** 2).sum(1).mean()
+
         # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
         predict_loss = criterion(output, target_var)
         zx_nloss, zx_ploss = vector_loss(xc, zx, measure, True)
@@ -160,8 +168,8 @@ def validate(val_loader, model, mi_encoder, criterion, epoch, logger, threshold 
             target_var = torch.autograd.Variable(target)
 
             x, z, output, m = model(input_var)
-            # xc, zx, zy, yc = mi_encoder(x, z, target_var)
-            xc, zx, zy, yc = mi_encoder(x, z, (target_var + (torch.sigmoid((output)))/2).detach())
+            xc, zx, zy, yc = mi_encoder(x, z, target_var)
+            # xc, zx, zy, yc = mi_encoder(x, z, (target_var + (torch.sigmoid((output)))/2).detach())
             # xc, zx, zy, yc = mi_encoder(x, z, ((torch.sigmoid((output)))))
             act_loss = (z ** 2).sum(1).mean()
             # loss = total_loss(criterion, output, target_var, xc, zx, zy, yc, measure, alpha, beta)
